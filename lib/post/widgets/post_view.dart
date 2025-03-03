@@ -180,13 +180,13 @@ class _PostSubviewState extends State<PostSubview> with SingleTickerProviderStat
                 ],
               ),
             ),
-            if (thunderState.postBodyViewType != PostBodyViewType.condensed)
+            if (thunderState.postBodyViewType != PostBodyViewType.condensed && postViewMedia.media.first.mediaType != MediaType.text)
               Expandable(
                 controller: expandableController,
                 collapsed: Container(),
                 expanded: MediaView(
-                  scrapeMissingPreviews: scrapeMissingPreviews,
-                  postViewMedia: widget.postViewMedia,
+                  viewMode: ViewMode.comfortable,
+                  media: postViewMedia.media.first,
                   showFullHeightImages: true,
                   allowUnconstrainedImageHeight: true,
                   hideNsfwPreviews: hideNsfwPreviews,
@@ -388,8 +388,7 @@ class _PostSubviewState extends State<PostSubview> with SingleTickerProviderStat
             vertical: 4,
           ),
           child: MediaView(
-            scrapeMissingPreviews: thunderState.scrapeMissingPreviews,
-            postViewMedia: postViewMedia,
+            media: postViewMedia.media.first,
             showFullHeightImages: false,
             hideNsfwPreviews: hideNsfwPreviews,
             markPostReadOnMediaView: markPostReadOnMediaView,
