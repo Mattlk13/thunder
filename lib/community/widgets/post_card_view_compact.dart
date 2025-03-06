@@ -2,30 +2,41 @@ import 'package:flutter/material.dart';
 
 import 'package:lemmy_api_client/v3.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:html_unescape/html_unescape_small.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
-import 'package:thunder/account/bloc/account_bloc.dart';
 import 'package:thunder/community/widgets/post_card_metadata.dart';
-import 'package:thunder/community/widgets/post_card_type_badge.dart';
-import 'package:thunder/core/auth/bloc/auth_bloc.dart';
-import 'package:thunder/core/enums/font_scale.dart';
 import 'package:thunder/core/enums/media_type.dart';
 import 'package:thunder/core/enums/view_mode.dart';
 import 'package:thunder/core/models/post_view_media.dart';
 import 'package:thunder/core/theme/bloc/theme_bloc.dart';
 import 'package:thunder/feed/view/feed_page.dart';
-import 'package:thunder/shared/media/media_view.dart';
+import 'package:thunder/post/widgets/post_card_title.dart';
+import 'package:thunder/shared/media/compact_thumbnail_preview.dart';
 import 'package:thunder/thunder/bloc/thunder_bloc.dart';
 
+/// Displays a compact view of a post card. This view is used in the feed related pages.
 class PostCardViewCompact extends StatelessWidget {
+  /// The associated post information to display in the card.
   final PostViewMedia postViewMedia;
+
+  /// The type of feed that the post is in.
   final FeedType? feedType;
+
+  /// Determines whether the user is logged in or not.
   final bool isUserLoggedIn;
+
+  /// The type of listing that the post is in.
   final ListingType? listingType;
+
+  /// The callback function to navigate to the post.
   final void Function({PostViewMedia? postViewMedia})? navigateToPost;
+
+  /// Determines whether the post should be dimmed or not. This is usually to indicate when a post has been read.
   final bool? indicateRead;
+
+  /// Determines whether the media thumbnails should be shown or not.
   final bool showMedia;
+
+  /// Determines whether the post is the last tapped post. This is used to highlight the post.
   final bool isLastTapped;
 
   const PostCardViewCompact({
@@ -40,131 +51,67 @@ class PostCardViewCompact extends StatelessWidget {
     required this.isLastTapped,
   });
 
+  /// Returns the color of the container based on the current theme and whether the post is dimmed or not.
+  ///
+  /// If the post is the last tapped post, the container will be highlighted with the primary color.
+  Color? getContainerColor(BuildContext context, {bool dim = false}) {
+    final theme = Theme.of(context);
+    final useDarkTheme = context.select((ThemeBloc bloc) => bloc.state.useDarkTheme);
+
+    if (isLastTapped) {
+      return theme.colorScheme.primary.withValues(alpha: 0.15);
+    } else if (dim) {
+      return theme.colorScheme.onSurface.withValues(alpha: useDarkTheme ? 0.05 : 0.075);
+    }
+
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final AppLocalizations l10n = AppLocalizations.of(context)!;
-    final theme = Theme.of(context);
-    final ThunderState state = context.watch<ThunderBloc>().state;
+    final showThumbnailPreviewOnRight = context.select((ThunderBloc bloc) => bloc.state.showThumbnailPreviewOnRight);
+    final showTextPostIndicator = context.select((ThunderBloc bloc) => bloc.state.showTextPostIndicator);
+    final showCommunitySubscription = isUserLoggedIn && (listingType == ListingType.all || listingType == ListingType.local) && postViewMedia.postView.subscribed != SubscribedType.notSubscribed;
 
-    bool showThumbnailPreviewOnRight = state.showThumbnailPreviewOnRight;
-    bool showTextPostIndicator = state.showTextPostIndicator;
-    bool indicateRead = this.indicateRead ?? state.dimReadPosts;
+    bool indicateRead = this.indicateRead ?? context.select((ThunderBloc bloc) => bloc.state.dimReadPosts);
 
-    final showCommunitySubscription = (listingType == ListingType.all || listingType == ListingType.local) &&
-        isUserLoggedIn &&
-        context.read<AccountBloc>().state.subsciptions.map((subscription) => subscription.community.actorId).contains(postViewMedia.postView.community.actorId);
+    // Post statuses
+    final read = postViewMedia.postView.read;
+    final hidden = postViewMedia.postView.hidden;
+    final removed = postViewMedia.postView.post.removed;
+    final deleted = postViewMedia.postView.post.deleted;
+    final saved = postViewMedia.postView.saved;
+    final locked = postViewMedia.postView.post.locked;
+    final pinned = postViewMedia.postView.post.featuredCommunity || postViewMedia.postView.post.featuredLocal;
 
-    Color? communityAndAuthorColorTransformation(Color? color) => indicateRead && postViewMedia.postView.read ? color?.withValues(alpha: 0.45) : color?.withValues(alpha: 0.75);
+    Color? communityAndAuthorColorTransformation(Color? color) => indicateRead && read ? color?.withValues(alpha: 0.45) : color?.withValues(alpha: 0.75);
 
-    final double textScaleFactor = state.titleFontSizeScale.textScaleFactor;
-
-    final bool darkTheme = context.read<ThemeBloc>().state.useDarkTheme;
+    final dim = indicateRead && read;
 
     return Container(
-      color: isLastTapped
-          ? theme.colorScheme.primary.withValues(alpha: 0.15)
-          : indicateRead && postViewMedia.postView.read
-              ? theme.colorScheme.onSurface.withValues(alpha: darkTheme ? 0.05 : 0.075)
-              : null,
+      color: getContainerColor(context, dim: dim),
       padding: showMedia ? const EdgeInsets.only(bottom: 8.0, top: 6) : const EdgeInsets.only(left: 4.0, top: 10.0, bottom: 10.0),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           !showThumbnailPreviewOnRight && showMedia && (postViewMedia.media.first.mediaType == MediaType.text ? showTextPostIndicator : true)
-              ? ThumbnailPreview(
-                  postViewMedia: postViewMedia,
-                  navigateToPost: navigateToPost,
-                  indicateRead: indicateRead,
-                )
+              ? CompactThumbnailPreview(media: postViewMedia.media.first, dim: dim, navigateToPost: navigateToPost)
               : const SizedBox(width: 8.0),
           Expanded(
             child: Column(
+              spacing: 6.0,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text.rich(
-                  TextSpan(
-                    children: [
-                      if (postViewMedia.postView.hidden == true) ...[
-                        WidgetSpan(
-                          child: Icon(
-                            Icons.visibility_off_rounded,
-                            color: indicateRead && postViewMedia.postView.read
-                                ? context.read<ThunderBloc>().state.hideColor.color.withValues(alpha: 0.55)
-                                : context.read<ThunderBloc>().state.hideColor.color,
-                            size: 16 * textScaleFactor,
-                            semanticLabel: l10n.hidden,
-                          ),
-                        ),
-                        const WidgetSpan(child: SizedBox(width: 2)),
-                      ],
-                      if (postViewMedia.postView.post.locked) ...[
-                        WidgetSpan(
-                          child: Icon(
-                            Icons.lock,
-                            color: indicateRead && postViewMedia.postView.read
-                                ? context.read<ThunderBloc>().state.upvoteColor.color.withValues(alpha: 0.55)
-                                : context.read<ThunderBloc>().state.upvoteColor.color,
-                            size: 15 * textScaleFactor,
-                          ),
-                        ),
-                      ],
-                      if (postViewMedia.postView.saved)
-                        WidgetSpan(
-                          child: Icon(
-                            Icons.star_rounded,
-                            color: indicateRead && postViewMedia.postView.read
-                                ? context.read<ThunderBloc>().state.saveColor.color.withValues(alpha: 0.55)
-                                : context.read<ThunderBloc>().state.saveColor.color,
-                            size: 17 * textScaleFactor,
-                            semanticLabel: 'Saved',
-                          ),
-                        ),
-                      if (postViewMedia.postView.post.featuredCommunity || postViewMedia.postView.post.featuredLocal)
-                        WidgetSpan(
-                          child: Icon(
-                            Icons.push_pin_rounded,
-                            size: 15 * textScaleFactor,
-                            color: indicateRead && postViewMedia.postView.read ? Colors.green.withValues(alpha: 0.55) : Colors.green,
-                          ),
-                        ),
-                      if (postViewMedia.postView.post.deleted)
-                        WidgetSpan(
-                          child: Icon(
-                            Icons.delete_rounded,
-                            size: 16 * textScaleFactor,
-                            color: indicateRead && postViewMedia.postView.read ? Colors.red.withValues(alpha: 0.55) : Colors.red,
-                          ),
-                        ),
-                      if (postViewMedia.postView.post.removed)
-                        WidgetSpan(
-                          child: Icon(
-                            Icons.delete_forever_rounded,
-                            size: 16 * textScaleFactor,
-                            color: indicateRead && postViewMedia.postView.read ? Colors.red.withValues(alpha: 0.55) : Colors.red,
-                          ),
-                        ),
-                      if (postViewMedia.postView.post.deleted ||
-                          postViewMedia.postView.post.removed ||
-                          postViewMedia.postView.post.featuredCommunity ||
-                          postViewMedia.postView.post.featuredLocal ||
-                          postViewMedia.postView.saved ||
-                          postViewMedia.postView.post.locked)
-                        const WidgetSpan(child: SizedBox(width: 3.5)),
-                      TextSpan(
-                        text: HtmlUnescape().convert(postViewMedia.postView.post.name),
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          fontSize: MediaQuery.textScalerOf(context).scale(theme.textTheme.bodyMedium!.fontSize! * state.titleFontSizeScale.textScaleFactor),
-                          color: postViewMedia.postView.post.featuredCommunity || postViewMedia.postView.post.featuredLocal
-                              ? (indicateRead && postViewMedia.postView.read ? Colors.green.withValues(alpha: 0.55) : Colors.green)
-                              : (indicateRead && postViewMedia.postView.read ? theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.55) : null),
-                        ),
-                      ),
-                    ],
-                  ),
-                  textScaler: TextScaler.noScaling,
+                PostCardTitle(
+                  title: postViewMedia.postView.post.name,
+                  hidden: hidden ?? false,
+                  locked: locked,
+                  saved: saved,
+                  pinned: pinned,
+                  deleted: deleted,
+                  removed: removed,
+                  dim: dim,
                 ),
-                const SizedBox(height: 6.0),
                 PostCommunityAndAuthor(
                   compactMode: true,
                   showCommunityIcons: false,
@@ -174,7 +121,6 @@ class PostCardViewCompact extends StatelessWidget {
                   authorColorTransformation: communityAndAuthorColorTransformation,
                   showCommunitySubscription: showCommunitySubscription,
                 ),
-                const SizedBox(height: 6.0),
                 PostCardMetadata(
                   postCardViewType: ViewMode.compact,
                   score: postViewMedia.postView.counts.score,
@@ -187,75 +133,14 @@ class PostCardViewCompact extends StatelessWidget {
                   hasBeenEdited: postViewMedia.postView.post.updated != null ? true : false,
                   url: postViewMedia.media.firstOrNull != null ? postViewMedia.media.first.originalUrl : null,
                   languageId: postViewMedia.postView.post.languageId,
-                  hasBeenRead: indicateRead && postViewMedia.postView.read,
+                  hasBeenRead: dim,
                 ),
               ],
             ),
           ),
           showThumbnailPreviewOnRight && showMedia && (postViewMedia.media.first.mediaType == MediaType.text ? showTextPostIndicator : true)
-              ? ThumbnailPreview(
-                  postViewMedia: postViewMedia,
-                  navigateToPost: navigateToPost,
-                  indicateRead: indicateRead,
-                )
+              ? CompactThumbnailPreview(media: postViewMedia.media.first, dim: dim, navigateToPost: navigateToPost)
               : const SizedBox(width: 8.0),
-        ],
-      ),
-    );
-  }
-}
-
-/// Displays the thumbnail preview for the post. This can be text, media, or links.
-class ThumbnailPreview extends StatelessWidget {
-  /// The [PostViewMedia] to display the thumbnail preview for
-  final PostViewMedia postViewMedia;
-
-  /// The callback function to navigate to the post
-  final void Function({PostViewMedia? postViewMedia})? navigateToPost;
-
-  final bool? indicateRead;
-
-  const ThumbnailPreview({
-    super.key,
-    required this.postViewMedia,
-    required this.navigateToPost,
-    this.indicateRead,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final state = context.read<ThunderBloc>().state;
-    final isUserLoggedIn = context.read<AuthBloc>().state.isLoggedIn;
-
-    final indicateRead = this.indicateRead ?? state.dimReadPosts;
-    final hideNsfwPreviews = state.hideNsfwPreviews;
-    final markPostReadOnMediaView = state.markPostReadOnMediaView;
-
-    return ExcludeSemantics(
-      child: Stack(
-        alignment: AlignmentDirectional.bottomEnd,
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 4),
-            child: MediaView(
-              media: postViewMedia.media.first,
-              postId: postViewMedia.postView.post.id,
-              showFullHeightImages: false,
-              hideNsfwPreviews: hideNsfwPreviews,
-              markPostReadOnMediaView: markPostReadOnMediaView,
-              viewMode: ViewMode.compact,
-              isUserLoggedIn: isUserLoggedIn,
-              navigateToPost: navigateToPost,
-              read: indicateRead && postViewMedia.postView.read,
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.only(right: 6, bottom: 0),
-            child: TypeBadge(
-              mediaType: postViewMedia.media.firstOrNull?.mediaType ?? MediaType.text,
-              dim: indicateRead && postViewMedia.postView.read,
-            ),
-          ),
         ],
       ),
     );
