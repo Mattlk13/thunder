@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:html/parser.dart';
-import 'package:lemmy_api_client/v3.dart';
 import 'package:markdown/markdown.dart' hide Text;
 
 import 'package:thunder/community/enums/community_action.dart';
@@ -31,16 +30,13 @@ class PostCardViewComfortable extends StatelessWidget {
   final bool hideNsfwPreviews;
   final bool edgeToEdgeImages;
   final bool showTitleFirst;
-  final FeedType? feedType;
   final bool showPostAuthor;
   final bool showFullHeightImages;
   final bool showVoteActions;
   final bool showSaveAction;
-  final bool showCommunityIcons;
   final bool showTextContent;
   final bool isUserLoggedIn;
   final bool markPostReadOnMediaView;
-  final ListingType? listingType;
   final void Function({PostViewMedia? postViewMedia})? navigateToPost;
   final bool? indicateRead;
   final bool isLastTapped;
@@ -52,18 +48,15 @@ class PostCardViewComfortable extends StatelessWidget {
     required this.hideNsfwPreviews,
     required this.edgeToEdgeImages,
     required this.showTitleFirst,
-    required this.feedType,
     required this.showPostAuthor,
     required this.showFullHeightImages,
     required this.showVoteActions,
     required this.showSaveAction,
-    required this.showCommunityIcons,
     required this.showTextContent,
     required this.isUserLoggedIn,
     required this.onVoteAction,
     required this.onSaveAction,
     required this.markPostReadOnMediaView,
-    required this.listingType,
     this.indicateRead,
     required this.isLastTapped,
     this.navigateToPost,
@@ -95,7 +88,6 @@ class PostCardViewComfortable extends StatelessWidget {
     final counts = postView.counts;
     final media = postViewMedia.media.firstOrNull;
 
-    final showCommunitySubscription = isUserLoggedIn && (listingType == ListingType.all || listingType == ListingType.local) && postView.subscribed != SubscribedType.notSubscribed;
     bool indicateRead = this.indicateRead ?? context.select((ThunderBloc bloc) => bloc.state.dimReadPosts);
     final textContent = post.body ?? "";
     final readColor = indicateRead && postView.read ? theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.45) : theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.90);
@@ -127,8 +119,6 @@ class PostCardViewComfortable extends StatelessWidget {
     final saved = postView.saved;
     final locked = post.locked;
     final pinned = post.featuredCommunity || post.featuredLocal;
-
-    Color? communityAndAuthorColorTransformation(Color? color) => indicateRead && read ? color?.withValues(alpha: 0.45) : color?.withValues(alpha: 0.75);
 
     final dim = indicateRead && read;
 
@@ -186,15 +176,7 @@ class PostCardViewComfortable extends StatelessWidget {
                     spacing: 8.0,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      PostCommunityAndAuthor(
-                        showCommunityIcons: showCommunityIcons,
-                        feedType: feedType,
-                        postView: postViewMedia.postView,
-                        authorColorTransformation: communityAndAuthorColorTransformation,
-                        communityColorTransformation: communityAndAuthorColorTransformation,
-                        compactMode: false,
-                        showCommunitySubscription: showCommunitySubscription,
-                      ),
+                      PostCommunityAndAuthor(postView: postViewMedia.postView, dim: dim),
                       PostCardMetadata(
                         postCardViewType: ViewMode.comfortable,
                         score: counts.score,
