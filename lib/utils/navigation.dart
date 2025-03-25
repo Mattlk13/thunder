@@ -383,6 +383,7 @@ Future<void> navigateToCreatePostPage(
   int? communityId,
   ThunderCommunity? community,
   PostViewMedia? postViewMedia,
+  bool isCrossPost = false,
   Function(PostViewMedia, bool)? onPostSuccess,
 }) async {
   try {
@@ -448,6 +449,7 @@ Future<void> navigateToCreatePostPage(
             communityId: communityId ?? postViewMedia?.postView.community.id,
             community: community ?? (postViewMedia != null ? pvmCommunity : null),
             postView: postViewMedia?.postView,
+            isCrossPost: isCrossPost,
             onPostSuccess: (PostViewMedia pvm, bool userChanged) {
               // Update the existing post view media if it exists
               if (feedBloc != null && postViewMedia != null) feedBloc.add(FeedItemUpdatedEvent(postViewMedia: pvm));
