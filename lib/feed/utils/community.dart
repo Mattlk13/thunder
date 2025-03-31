@@ -7,6 +7,8 @@ import 'package:thunder/account/models/favourite.dart';
 import 'package:thunder/core/auth/helpers/fetch_account.dart';
 import 'package:thunder/core/models/models.dart';
 import 'package:thunder/core/singletons/lemmy_client.dart';
+import 'package:thunder/shared/snackbar.dart';
+import 'package:thunder/utils/error_messages.dart';
 import 'package:thunder/utils/global_context.dart';
 
 /// Logic to block a community
@@ -51,22 +53,26 @@ Future<Map<String, dynamic>> fetchCommunityInformation({int? id, String? name}) 
 }
 
 Future<void> toggleFavoriteCommunity(BuildContext context, ThunderCommunity community, bool isFavorite) async {
-  if (isFavorite) {
-    await Favorite.deleteFavorite(communityId: community.id);
-    if (context.mounted) context.read<AccountBloc>().add(const RefreshAccountInformation());
-    return;
+  try {
+    if (isFavorite) {
+      await Favorite.deleteFavorite(communityId: community.id);
+      if (context.mounted) context.read<AccountBloc>().add(const GetFavoritedCommunities());
+      return;
+    }
+
+    Account? account = await fetchActiveProfileAccount();
+
+    Favorite favorite = Favorite(
+      id: '',
+      communityId: community.id,
+      accountId: account!.id,
+    );
+
+    await Favorite.insertFavorite(favorite);
+    if (context.mounted) context.read<AccountBloc>().add(const GetFavoritedCommunities());
+  } catch (e) {
+    showSnackbar(getExceptionErrorMessage(e));
   }
-
-  Account? account = await fetchActiveProfileAccount();
-
-  Favorite favorite = Favorite(
-    id: '',
-    communityId: community.id,
-    accountId: account!.id,
-  );
-
-  await Favorite.insertFavorite(favorite);
-  if (context.mounted) context.read<AccountBloc>().add(const RefreshAccountInformation());
 }
 
 /// Takes a list of [communities] and returns the list with any [favoriteCommunities] at the beginning of the list

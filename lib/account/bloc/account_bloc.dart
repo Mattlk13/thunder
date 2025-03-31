@@ -43,9 +43,9 @@ class AccountBloc extends Bloc<AccountEvent, AccountState> {
   }
 
   Future<void> _refreshAccountInformation(RefreshAccountInformation event, Emitter<AccountState> emit) async {
+    await _getFavoritedCommunities(GetFavoritedCommunities(reload: event.reload), emit);
     await _getAccountInformation(GetAccountInformation(reload: event.reload), emit);
     await _getAccountSubscriptions(GetAccountSubscriptions(reload: event.reload), emit);
-    await _getFavoritedCommunities(GetFavoritedCommunities(reload: event.reload), emit);
   }
 
   /// Fetches the current account's information. This updates [personView] which holds moderated community information.
@@ -92,7 +92,7 @@ class AccountBloc extends Bloc<AccountEvent, AccountState> {
       bool hasFetchedAllSubsciptions = false;
 
       while (!hasFetchedAllSubsciptions) {
-        final response = await lemmy.run(ListCommunities(auth: account.jwt, page: currentPage, type: ListingType.subscribed));
+        final response = await lemmy.run(ListCommunities(auth: account.jwt, page: currentPage, limit: 50, type: ListingType.subscribed));
         subscriptions.addAll(response.communities.map((cv) => ThunderCommunity(cv.community, communityView: cv)));
 
         currentPage++;
