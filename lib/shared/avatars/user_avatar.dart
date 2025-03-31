@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 import 'package:thunder/core/models/models.dart';
+import 'package:thunder/utils/media/image.dart';
 
 /// A user avatar. Displays the associated user icon if available.
 ///
@@ -45,17 +46,20 @@ class UserAvatar extends StatelessWidget {
 
     if (user.icon?.isNotEmpty != true) return placeholderIcon;
 
-    Uri imageUri = Uri.parse(user.icon!);
-    bool isPictrsImageEndpoint = imageUri.toString().contains('/pictrs/image/');
-
     Map<String, dynamic> queryParameters = {};
-    if (isPictrsImageEndpoint && thumbnailSize != null) queryParameters['thumbnail'] = thumbnailSize.toString();
-    if (isPictrsImageEndpoint && format != null) queryParameters['format'] = format;
+    if (thumbnailSize != null) queryParameters['thumbnail'] = thumbnailSize.toString();
+    if (format != null) queryParameters['format'] = format;
 
-    Uri thumbnailUri = Uri.https(imageUri.host, imageUri.path, queryParameters);
+    Uri imageUri = Uri.parse(user.icon!);
+
+    // Only set pictrs query parameters if the image URL is a pictrs URL and the image is not being proxied
+    if (imageUri.path.contains('/pictrs/image/') && queryParameters.isNotEmpty) {
+      imageUri = Uri.https(imageUri.host, imageUri.path, queryParameters);
+      debugPrint('imageUri with pictrs: $imageUri');
+    }
 
     return CachedNetworkImage(
-      imageUrl: thumbnailUri.toString(),
+      imageUrl: imageUri.toString(),
       imageBuilder: (context, imageProvider) {
         return CircleAvatar(backgroundColor: Colors.transparent, foregroundImage: imageProvider, maxRadius: radius);
       },

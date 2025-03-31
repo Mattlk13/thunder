@@ -37,11 +37,25 @@ class Media {
   /// Includes an alternative text-based description of the image
   String? altText;
 
+  /// The content type of the media
+  String? contentType;
+
   /// Gets the full-size image URL, if any
   String? get imageUrl => isImageUrl(mediaUrl ?? '') ? mediaUrl : thumbnailUrl;
 
   @override
   String toString() {
-    return '''Media { thumbnailUrl: $thumbnailUrl, mediaUrl: $mediaUrl, originalUrl: $originalUrl, width: $width, height: $height, type: $mediaType }''';
+    return '''
+      Media {
+        type: $mediaType,
+        originalUrl: $originalUrl,
+        thumbnailUrl: $thumbnailUrl,
+        mediaUrl: $mediaUrl,
+        width: $width,
+        height: $height,
+        nsfw: $nsfw,
+        contentType: $contentType,
+      }
+      ''';
   }
 }

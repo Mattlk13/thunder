@@ -9,7 +9,6 @@ import 'package:thunder/core/auth/helpers/fetch_account.dart';
 import 'package:thunder/core/enums/local_settings.dart';
 import 'package:thunder/core/enums/media_type.dart';
 import 'package:thunder/core/models/media.dart';
-import 'package:thunder/core/models/media_extension.dart';
 import 'package:thunder/core/models/post_view_media.dart';
 import 'package:thunder/core/singletons/lemmy_client.dart';
 import 'package:thunder/core/singletons/preferences.dart';
@@ -357,35 +356,35 @@ Future<PostViewMedia> parsePostView(PostView postView, bool fetchImageDimensions
 
   Media media = Media(mediaType: mediaType, originalUrl: url, nsfw: postView.post.nsfw);
 
+  // Set the proper alt text for the media
   if (media.mediaType == MediaType.text) {
     media.altText = postView.post.body;
   } else if (media.mediaType == MediaType.image) {
     media.altText = postView.post.altText;
   }
 
-  // Determine the thumbnail url
-  if (thumbnailUrl != null && thumbnailUrl.isNotEmpty) {
-    // Now check to see if there is a thumbnail image. If there is, we'll use that for the image
-    media.thumbnailUrl = thumbnailUrl;
-  } else if (isImage) {
-    // If there is no thumbnail image, but the url is an image, we'll use that for the thumbnailUrl
-    media.thumbnailUrl = url;
-  }
-
-  // Determine the media url
+  // Determine the media url - this is the "source" of the media (image/video)
   if (isImage) {
     media.mediaUrl = url;
   } else if (isVideo) {
     media.mediaUrl = videoUrl;
   }
 
-  Size result = Size(MediaQuery.of(GlobalContext.context).size.width, 200);
+  // Determine thumbnail and relevant image metadata. If the instance supports image metadata, we'll use that.
   bool useImageMetadata = LemmyClient.instance.supportsFeature(LemmyFeature.imageDimension);
 
-  // Check to see if there is available image metadata
+  Size? size;
+
   if (useImageMetadata && postView.imageDetails != null) {
-    debugPrint('Using image metadata for ${media.thumbnailUrl ?? media.mediaUrl}');
-    result = Size(postView.imageDetails!.width.toDouble(), postView.imageDetails!.height.toDouble());
+    media.thumbnailUrl = postView.imageDetails!.link;
+    media.contentType = postView.imageDetails!.contentType;
+    size = Size(postView.imageDetails!.width.toDouble(), postView.imageDetails!.height.toDouble());
+  } else if (thumbnailUrl != null && thumbnailUrl.isNotEmpty) {
+    // Now check to see if there is a thumbnail image. If there is, we'll use that for the image
+    media.thumbnailUrl = thumbnailUrl;
+  } else if (isImage) {
+    // Finally, ff there is no thumbnail image, but the url is an image, we'll use that for the thumbnailUrl
+    media.thumbnailUrl = url;
   }
 
   if (fetchImageDimensions && media.thumbnailUrl != null) {
@@ -394,16 +393,17 @@ Future<PostViewMedia> parsePostView(PostView postView, bool fetchImageDimensions
       SharedPreferences prefs = (await UserPreferences.instance).sharedPreferences;
       int imageDimensionTimeout = prefs.getInt(LocalSettings.imageDimensionTimeout.name) ?? 2;
 
-      result = await retrieveImageDimensions(imageUrl: media.thumbnailUrl ?? media.mediaUrl).timeout(Duration(seconds: imageDimensionTimeout));
+      size = await retrieveImageDimensions(imageUrl: media.thumbnailUrl ?? media.mediaUrl).timeout(Duration(seconds: imageDimensionTimeout));
     } catch (e) {
       debugPrint('${media.thumbnailUrl ?? media.originalUrl} - $e: Falling back to default image size');
     }
   }
 
-  Size scaledSize = MediaExtension.getScaledMediaSize(width: result.width, height: result.height, offset: edgeToEdgeImages ? 0 : 24, tabletMode: tabletMode);
+  // Determine the scaled size of the image based on the device screen size
+  Size? scaledSize = getScaledMediaSize(width: size?.width, height: size?.height, offset: edgeToEdgeImages ? 0 : 24, tabletMode: tabletMode);
 
-  media.width = scaledSize.width;
-  media.height = scaledSize.height;
+  media.width = scaledSize?.width;
+  media.height = scaledSize?.height;
 
   mediaList.add(media);
 

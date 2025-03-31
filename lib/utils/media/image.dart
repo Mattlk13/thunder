@@ -14,6 +14,27 @@ import 'package:thunder/account/models/account.dart';
 import 'package:thunder/shared/image_viewer.dart';
 import 'package:thunder/shared/snackbar.dart';
 
+/// Givent a URL, returns the proxied URL if it is a proxy URL. Otherwise, returns the original URL.
+///
+/// This is useful for handling thumbnail URLs that are proxied via /image_proxy.
+String fetchProxyImageUrl(String url) {
+  Uri uri;
+
+  try {
+    uri = Uri.parse(url);
+  } catch (e) {
+    return url; // Return the original URL if parsing fails
+  }
+
+  // Handle thumbnail urls that are proxied via /image_proxy
+  if (uri.path == '/api/v3/image_proxy') {
+    Uri? parsedUri = Uri.tryParse(uri.queryParameters['url'] ?? '');
+    if (parsedUri != null) return parsedUri.toString();
+  }
+
+  return url;
+}
+
 String generateRandomHeroString({int? len}) {
   Random r = Random();
   return String.fromCharCodes(List.generate(len ?? 32, (index) => r.nextInt(33) + 89));
@@ -24,6 +45,9 @@ bool isImageUrl(String url) {
   // e.g., https://cdn.bsky.app/img/feed_fullsize/plain/did:plc:wf7nfy2us3h5gpa7zfettmzl/bafkreib6k2uwcy52wi654fdfmfqakzqu54m4eq7vi6cwrolwud6yhehihy@jpeg?.jpg
   final imageExtensions = ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp', '@jpeg'];
 
+  // If image proxying is enabled, we need to determine the original URL to see if that's an image
+  url = fetchProxyImageUrl(url);
+
   Uri uri;
   try {
     uri = Uri.parse(url);
@@ -31,16 +55,8 @@ bool isImageUrl(String url) {
     return false;
   }
 
-  String path = uri.path.toLowerCase();
-
-  // Handle thumbnail urls that are proxied via /image_proxy
-  if (uri.path == '/api/v3/image_proxy') {
-    Uri? parsedUri = Uri.tryParse(uri.queryParameters['url'] ?? '');
-    if (parsedUri != null) path = parsedUri.path;
-  }
-
   for (final extension in imageExtensions) {
-    if (path.endsWith(extension)) {
+    if (uri.path.toLowerCase().endsWith(extension)) {
       return true;
     }
   }
@@ -93,11 +109,25 @@ Future<Size> retrieveImageDimensions({String? imageUrl, Uint8List? imageBytes}) 
     final frame = await codec.getNextFrame();
     final uiImage = frame.image;
 
-    debugPrint('width: ${uiImage.width} \t height: ${uiImage.height} \t $imageUrl');
     return Size(uiImage.width.toDouble(), uiImage.height.toDouble());
   } catch (e) {
     throw Exception('Failed to retrieve image dimensions from $imageUrl: $e');
   }
+}
+
+Size? getScaledMediaSize({width, height, offset = 24.0, tabletMode = false}) {
+  if (width == null || height == null) return null;
+  double mediaRatio = width / height;
+
+  FlutterView device = PlatformDispatcher.instance.views.first;
+
+  double screenWidth = (device.physicalSize.width / device.devicePixelRatio) - device.viewPadding.left - device.viewPadding.right - offset;
+  double usableScreenWidth = tabletMode ? screenWidth / 2 - (offset + 8.0) : screenWidth;
+  double widthScale = usableScreenWidth / width;
+  double mediaMaxWidth = widthScale * width;
+  double mediaMaxHeight = mediaMaxWidth / mediaRatio;
+
+  return Size(mediaMaxWidth, mediaMaxHeight);
 }
 
 void uploadImage(BuildContext context, ImageBloc imageBloc, {bool postImage = false, String? imagePath}) async {
