@@ -43,7 +43,6 @@ import 'package:thunder/utils/links.dart';
 import 'package:thunder/inbox/bloc/inbox_bloc.dart';
 import 'package:thunder/inbox/inbox.dart';
 import 'package:thunder/search/bloc/search_bloc.dart';
-import 'package:thunder/core/auth/bloc/auth_bloc.dart';
 import 'package:thunder/core/models/version.dart';
 import 'package:thunder/search/pages/search_page.dart';
 import 'package:thunder/settings/pages/settings_page.dart';
@@ -74,9 +73,7 @@ class _ThunderState extends State<Thunder> {
 
   final GlobalKey<ScaffoldState> scaffoldStateKey = GlobalKey<ScaffoldState>();
 
-  late final StreamSubscription mediaIntentDataStreamSubscription;
-
-  late final StreamSubscription textIntentDataStreamSubscription;
+  late final StreamSubscription? mediaIntentDataStreamSubscription;
 
   final ScrollController _changelogScrollController = ScrollController();
 
@@ -114,8 +111,7 @@ class _ThunderState extends State<Thunder> {
 
   @override
   void dispose() {
-    textIntentDataStreamSubscription.cancel();
-    mediaIntentDataStreamSubscription.cancel();
+    mediaIntentDataStreamSubscription?.cancel();
     BackButtonInterceptor.remove(_handleBackButtonPress);
     super.dispose();
   }
@@ -259,12 +255,12 @@ class _ThunderState extends State<Thunder> {
     final postId = await getLemmyPostId(context, link);
     if (context.mounted && postId != null) {
       LemmyApiV3 lemmy = LemmyClient.instance.lemmyApiV3;
-      Account? account = await fetchActiveProfileAccount();
+      final account = await fetchActiveProfile();
 
       try {
         GetPostResponse fullPostView = await lemmy.run(GetPost(
           id: postId,
-          auth: account?.jwt,
+          auth: account.jwt,
         ));
         if (context.mounted) {
           navigateToPost(context, postViewMedia: (await parsePostViews([fullPostView.postView])).first);
@@ -332,12 +328,12 @@ class _ThunderState extends State<Thunder> {
     final commentId = await getLemmyCommentId(context, link);
     if (context.mounted && commentId != null) {
       LemmyApiV3 lemmy = LemmyClient.instance.lemmyApiV3;
-      Account? account = await fetchActiveProfileAccount();
+      final account = await fetchActiveProfile();
 
       try {
         CommentResponse fullCommentView = await lemmy.run(GetComment(
           id: commentId,
-          auth: account?.jwt,
+          auth: account.jwt,
         ));
         if (context.mounted) {
           navigateToComment(context, fullCommentView.commentView);
@@ -478,25 +474,26 @@ class _ThunderState extends State<Thunder> {
                       });
                     },
                   ),
-                  body: BlocConsumer<AuthBloc, AuthState>(
-                    listenWhen: (AuthState previous, AuthState current) {
-                      if (previous.isLoggedIn != current.isLoggedIn || previous.status == AuthStatus.initial) return true;
+                  body: BlocConsumer<ProfileBloc, ProfileState>(
+                    listenWhen: (ProfileState previous, ProfileState current) {
+                      if (previous.isLoggedIn != current.isLoggedIn || previous.status == ProfileStatus.initial) return true;
                       return false;
                     },
-                    buildWhen: (previous, current) => current.status != AuthStatus.failure && current.status != AuthStatus.loading,
+                    buildWhen: (previous, current) => current.status != ProfileStatus.failure && current.status != ProfileStatus.loading,
                     listener: (context, state) {
                       // Although the buildWhen delegate exlcudes this state,
                       // there seems to be a timing issue where we can end up here anyway.
                       // So just return.
-                      if (state.status == AuthStatus.loading) return;
-
-                      context.read<AccountBloc>().add(RefreshAccountInformation(reload: state.reload));
+                      if (state.status == ProfileStatus.loading) return;
 
                       // If we have not been requested to reload, don't!
                       if (!state.reload) return;
 
                       // Add a bit of artificial delay to allow preferences to set the proper active profile
-                      Future.delayed(const Duration(milliseconds: 500), () => context.read<InboxBloc>().add(const GetInboxEvent(reset: true)));
+                      Future.delayed(const Duration(milliseconds: 500), () {
+                        if (context.mounted) context.read<InboxBloc>().add(const GetInboxEvent(reset: true));
+                      });
+
                       if (context.read<FeedBloc>().state.status != FeedStatus.initial) {
                         context.read<FeedBloc>().add(
                               FeedFetchedEvent(
@@ -511,16 +508,16 @@ class _ThunderState extends State<Thunder> {
                     },
                     builder: (context, state) {
                       switch (state.status) {
-                        case AuthStatus.initial:
-                          context.read<AuthBloc>().add(CheckAuth());
+                        case ProfileStatus.initial:
+                          context.read<ProfileBloc>().add(InitializeAuth());
                           return Scaffold(
                             appBar: AppBar(toolbarHeight: 70.0),
                             body: Center(
                               child: CircularProgressIndicator(),
                             ),
                           );
-                        case AuthStatus.contentWarning:
-                        case AuthStatus.success:
+                        case ProfileStatus.contentWarning:
+                        case ProfileStatus.success:
                           Version? version = thunderBlocState.version;
                           bool showInAppUpdateNotification = thunderBlocState.showInAppUpdateNotification;
 
@@ -649,11 +646,11 @@ class _ThunderState extends State<Thunder> {
                           );
 
                         // Should never hit these, they're handled by the login page
-                        case AuthStatus.failure:
-                        case AuthStatus.loading:
+                        case ProfileStatus.failure:
+                        case ProfileStatus.loading:
                           return Container();
-                        case AuthStatus.failureCheckingInstance:
-                          showSnackbar(state.errorMessage ?? AppLocalizations.of(context)!.missingErrorMessage);
+                        case ProfileStatus.failureCheckingInstance:
+                          showSnackbar(state.error ?? AppLocalizations.of(context)!.missingErrorMessage);
                           errorMessageLoading = false;
                           return StatefulBuilder(
                             builder: (context, setState) => ErrorMessage(
@@ -663,7 +660,7 @@ class _ThunderState extends State<Thunder> {
                                 (
                                   text: AppLocalizations.of(context)!.retry,
                                   action: () {
-                                    context.read<AuthBloc>().add(CheckAuth());
+                                    context.read<ProfileBloc>().add(InitializeAuth());
                                     setState(() => errorMessageLoading = true);
                                   },
                                   loading: errorMessageLoading,
@@ -687,7 +684,7 @@ class _ThunderState extends State<Thunder> {
                   actions: [
                     (
                       text: AppLocalizations.of(context)!.refreshContent,
-                      action: () => context.read<AuthBloc>().add(CheckAuth()),
+                      action: () => context.read<ProfileBloc>().add(InitializeAuth()),
                       loading: false,
                     ),
                   ],

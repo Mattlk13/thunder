@@ -18,7 +18,6 @@ import 'package:thunder/account/account.dart';
 import 'package:thunder/comment/widgets/comment_list_entry.dart';
 import 'package:thunder/community/bloc/anonymous_subscriptions_bloc.dart';
 import 'package:thunder/community/widgets/community_list_entry.dart';
-import 'package:thunder/core/auth/bloc/auth_bloc.dart';
 import 'package:thunder/core/enums/full_name.dart';
 import 'package:thunder/core/enums/meta_search_type.dart';
 import 'package:thunder/core/models/models.dart';
@@ -90,7 +89,7 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
     _currentSearchType = widget.communityToSearch == null ? MetaSearchType.communities : MetaSearchType.posts;
     _scrollController.addListener(_onScroll);
     initPrefs();
-    fetchActiveProfileAccount().then((activeProfile) => _previousUserId = activeProfile?.userId);
+    fetchActiveProfile().then((activeProfile) => _previousUserId = activeProfile.userId);
     context.read<SearchBloc>().add(GetTrendingCommunitiesEvent());
 
     if (widget.isInitiallyFocused) {
@@ -140,7 +139,7 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
               searchType: _getSearchTypeToUse(),
               communityId: widget.communityToSearch?.id ?? _currentCommunityFilter,
               creatorId: _currentCreatorFilter,
-              favoriteCommunities: context.read<AccountBloc>().state.favorites,
+              favoriteCommunities: context.read<ProfileBloc>().state.favorites,
             ));
       }
     }
@@ -171,8 +170,8 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
 
     context.read<AnonymousSubscriptionsBloc>().add(GetSubscribedCommunitiesEvent());
 
-    final bool isUserLoggedIn = context.read<AuthBloc>().state.isLoggedIn;
-    final String? accountInstance = context.read<AuthBloc>().state.account?.instance;
+    final bool isUserLoggedIn = context.read<ProfileBloc>().state.isLoggedIn;
+    final String? accountInstance = context.read<ProfileBloc>().state.account?.instance;
     final String? currentAnonymousInstance = context.read<ThunderBloc>().state.currentAnonymousInstance;
 
     return BlocProvider(
@@ -184,16 +183,16 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
           BlocListener<SearchBloc, SearchState>(listener: (context, state) {
             context.read<FeedBloc>().add(PopulatePostsEvent(state.posts ?? []));
           }),
-          BlocListener<AccountBloc, AccountState>(listener: (context, state) async {
-            final Account? activeProfile = await fetchActiveProfileAccount();
+          BlocListener<ProfileBloc, ProfileState>(listener: (context, state) async {
+            final activeProfile = await fetchActiveProfile();
 
             // When account changes, that means our instance most likely changed, so reset search.
-            if (state.status == AccountStatus.success && ((activeProfile?.userId == null && _previousUserId != null) || state.user?.id == activeProfile?.userId && _previousUserId != state.user?.id) ||
+            if (state.status == ProfileStatus.success && ((activeProfile.userId == null && _previousUserId != null) || state.user?.id == activeProfile.userId && _previousUserId != state.user?.id) ||
                 (state.favorites.length != _previousFavoritesCount && _controller.text.isEmpty)) {
               _controller.clear();
               if (context.mounted) context.read<SearchBloc>().add(ResetSearch());
               setState(() {});
-              _previousUserId = activeProfile?.userId;
+              _previousUserId = activeProfile.userId;
               _previousFavoritesCount = state.favorites.length;
             }
           }),
@@ -537,7 +536,7 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      if (context.read<AccountBloc>().state.favorites.isNotEmpty) ...[
+                      if (context.read<ProfileBloc>().state.favorites.isNotEmpty) ...[
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 5),
                           child: Text(
@@ -548,9 +547,9 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
                         ListView.builder(
                           physics: const NeverScrollableScrollPhysics(),
                           shrinkWrap: true,
-                          itemCount: context.read<AccountBloc>().state.favorites.length,
+                          itemCount: context.read<ProfileBloc>().state.favorites.length,
                           itemBuilder: (BuildContext context, int index) {
-                            final community = context.read<AccountBloc>().state.favorites[index];
+                            final community = context.read<ProfileBloc>().state.favorites[index];
                             final subscriptions = context.read<AnonymousSubscriptionsBloc>().state.ids;
 
                             return CommunityListEntry(
@@ -829,7 +828,7 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
   }
 
   bool _getFavoriteStatus(BuildContext context, ThunderCommunity community) {
-    final state = context.read<AccountBloc>().state;
+    final state = context.read<ProfileBloc>().state;
     return state.favorites.any((c) => c.id == community.id);
   }
 
@@ -924,7 +923,7 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
         searchType: _getSearchTypeToUse(),
         communityId: widget.communityToSearch?.id ?? _currentCommunityFilter,
         creatorId: _currentCreatorFilter,
-        favoriteCommunities: context.read<AccountBloc>().state.favorites,
+        favoriteCommunities: context.read<ProfileBloc>().state.favorites,
         force: force || searchBloc.state.viewingAll,
       ));
     } else {

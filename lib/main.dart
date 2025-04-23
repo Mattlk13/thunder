@@ -24,9 +24,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 // Project imports
 import 'package:thunder/account/account.dart';
+import 'package:thunder/account/bloc/profile_bloc.dart';
 import 'package:thunder/community/bloc/anonymous_subscriptions_bloc.dart';
 import 'package:thunder/community/bloc/community_bloc.dart';
-import 'package:thunder/core/auth/bloc/auth_bloc.dart';
 import 'package:thunder/core/database/database.dart';
 import 'package:thunder/core/database/migrations.dart';
 import 'package:thunder/core/enums/local_settings.dart';
@@ -164,12 +164,7 @@ class _ThunderAppState extends State<ThunderApp> {
         BlocProvider(
           create: (context) => ThemeBloc(),
         ),
-        BlocProvider(
-          create: (context) => AuthBloc(),
-        ),
-        BlocProvider(
-          create: (context) => AccountBloc(),
-        ),
+        BlocProvider(create: (context) => ProfileBloc()),
         BlocProvider(
           create: (context) => DeepLinksCubit(),
         ),

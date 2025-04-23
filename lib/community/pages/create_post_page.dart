@@ -22,7 +22,6 @@ import 'package:thunder/core/enums/media_type.dart';
 import 'package:thunder/core/models/media.dart';
 import 'package:thunder/core/models/models.dart';
 import 'package:thunder/post/widgets/post_action_bottom_sheet.dart';
-import 'package:thunder/core/auth/bloc/auth_bloc.dart';
 import 'package:thunder/core/enums/view_mode.dart';
 import 'package:thunder/core/models/post_view_media.dart';
 import 'package:thunder/core/singletons/lemmy_client.dart';
@@ -379,7 +378,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final theme = Theme.of(context);
-    originalUser ??= context.read<AuthBloc>().state.account;
+    originalUser ??= context.read<ProfileBloc>().state.account;
 
     return PopScope(
       onPopInvokedWithResult: (didPop, result) {
@@ -758,14 +757,15 @@ class _CreatePostPageState extends State<CreatePostPage> {
     if (url == text) {
       try {
         // Fetch cross-posts
-        final Account? account = await fetchActiveProfileAccount();
+        final account = await fetchActiveProfile();
+
         searchResponse = await LemmyClient.instance.lemmyApiV3.run(Search(
           q: url,
           type: SearchType.url,
           sort: SortType.topAll,
           listingType: ListingType.all,
           limit: 20,
-          auth: account?.jwt,
+          auth: account.jwt,
         ));
       } catch (e) {
         // Ignore

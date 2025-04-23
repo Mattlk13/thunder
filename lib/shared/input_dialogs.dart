@@ -9,7 +9,6 @@ import 'package:collection/collection.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 import 'package:thunder/account/account.dart';
-import 'package:thunder/core/auth/bloc/auth_bloc.dart';
 import 'package:thunder/core/enums/full_name.dart';
 import 'package:thunder/core/models/models.dart';
 import 'package:thunder/core/singletons/lemmy_client.dart';
@@ -36,8 +35,8 @@ void showUserInputDialog(BuildContext context, {required String title, required 
 
       if (normalizedUsername != null) {
         try {
-          final account = await fetchActiveProfileAccount();
-          final response = await LemmyClient.instance.lemmyApiV3.run(GetPersonDetails(auth: account?.jwt, username: normalizedUsername));
+          final account = await fetchActiveProfile();
+          final response = await LemmyClient.instance.lemmyApiV3.run(GetPersonDetails(auth: account.jwt, username: normalizedUsername));
           final user = ThunderUser(response.personView.person, userView: response.personView);
 
           onUserSelected(user);
@@ -65,10 +64,10 @@ void showUserInputDialog(BuildContext context, {required String title, required 
 Future<List<ThunderUser>> getUserSuggestions(String query) async {
   if (query.isNotEmpty != true) return [];
 
-  final account = await fetchActiveProfileAccount();
+  final account = await fetchActiveProfile();
   final response = await LemmyClient.instance.lemmyApiV3.run(Search(
     q: query,
-    auth: account?.jwt,
+    auth: account.jwt,
     type: SearchType.users,
     limit: 20,
   ));
@@ -117,7 +116,7 @@ void showCommunityInputDialog(BuildContext context, {required String title, requ
   final l10n = AppLocalizations.of(context)!;
 
   try {
-    final state = context.read<AccountBloc>().state;
+    final state = context.read<ProfileBloc>().state;
     emptySuggestions ??= state.subscriptions;
     emptySuggestions = prioritizeFavorites(emptySuggestions.toList(), state.favorites);
   } catch (e) {
@@ -134,8 +133,8 @@ void showCommunityInputDialog(BuildContext context, {required String title, requ
 
       if (normalizedCommunity != null) {
         try {
-          final account = await fetchActiveProfileAccount();
-          final response = await LemmyClient.instance.lemmyApiV3.run(GetCommunity(auth: account?.jwt, name: normalizedCommunity));
+          final account = await fetchActiveProfile();
+          final response = await LemmyClient.instance.lemmyApiV3.run(GetCommunity(auth: account.jwt, name: normalizedCommunity));
           final community = ThunderCommunity(response.communityView.community, communityView: response.communityView);
 
           onCommunitySelected(community);
@@ -163,10 +162,10 @@ void showCommunityInputDialog(BuildContext context, {required String title, requ
 Future<List<ThunderCommunity>> getCommunitySuggestions(BuildContext context, String query, List<ThunderCommunity>? emptySuggestions) async {
   if (query.isNotEmpty != true) return emptySuggestions ?? [];
 
-  final account = await fetchActiveProfileAccount();
+  final account = await fetchActiveProfile();
   final response = await LemmyClient.instance.lemmyApiV3.run(Search(
     q: query,
-    auth: account?.jwt,
+    auth: account.jwt,
     type: SearchType.communities,
     limit: 20,
     sort: SortType.topAll,
@@ -176,7 +175,7 @@ Future<List<ThunderCommunity>> getCommunitySuggestions(BuildContext context, Str
 
   if (context.mounted) {
     try {
-      favorites = context.read<AccountBloc>().state.favorites;
+      favorites = context.read<ProfileBloc>().state.favorites;
     } catch (e) {
       // Don't worry if we can't fetch favorites
     }
@@ -250,7 +249,7 @@ Widget buildCommunitySuggestionWidget(BuildContext context, ThunderCommunity pay
 
 /// Checks whether the current community is a favorite of the current user
 bool _getFavoriteStatus(BuildContext context, ThunderCommunity community) {
-  final state = context.read<AccountBloc>().state;
+  final state = context.read<ProfileBloc>().state;
   return state.favorites.any((c) => c.id == community.id);
 }
 
@@ -261,11 +260,11 @@ void showInstanceInputDialog(
   required void Function(InstanceWithFederationState) onInstanceSelected,
   Iterable<InstanceWithFederationState>? emptySuggestions,
 }) async {
-  Account? account = await fetchActiveProfileAccount();
+  Account? account = await fetchActiveProfile();
 
   GetFederatedInstancesResponse getFederatedInstancesResponse = await LemmyClient.instance.lemmyApiV3.run(
     GetFederatedInstances(
-      auth: account?.jwt,
+      auth: account.jwt,
     ),
   );
 
@@ -342,7 +341,7 @@ Widget buildInstanceSuggestionWidget(payload, {void Function(Instance)? onSelect
 /// Shows a dialog which allows typing/search for an language
 void showLanguageInputDialog(BuildContext context,
     {required String title, required void Function(Language) onLanguageSelected, Iterable<int>? excludedLanguageIds, Iterable<Language>? emptySuggestions}) async {
-  AuthState state = context.read<AuthBloc>().state;
+  ProfileState state = context.read<ProfileBloc>().state;
   final AppLocalizations l10n = AppLocalizations.of(context)!;
 
   List<Language> languages = [Language(id: -1, code: '', name: l10n.noLanguage), ...(state.getSiteResponse?.allLanguages ?? [])];
