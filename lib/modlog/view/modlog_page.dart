@@ -1,20 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import 'package:lemmy_api_client/v3.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
-import 'package:thunder/community/widgets/post_card_metadata.dart';
-import 'package:thunder/core/enums/font_scale.dart';
 import 'package:thunder/core/singletons/lemmy_client.dart';
 import 'package:thunder/feed/feed.dart';
 import 'package:thunder/modlog/modlog.dart';
-import 'package:thunder/shared/full_name_widgets.dart';
 import 'package:thunder/shared/snackbar.dart';
-import 'package:thunder/shared/text/scalable_text.dart';
 import 'package:thunder/thunder/bloc/thunder_bloc.dart';
-import 'package:thunder/utils/instance.dart';
+import 'package:thunder/modlog/repository/modlog_repository.dart';
 
 /// Creates a [ModlogPage] which holds a list of modlog events.
 class ModlogFeedPage extends StatefulWidget {
@@ -25,8 +19,8 @@ class ModlogFeedPage extends StatefulWidget {
     this.userId,
     this.moderatorId,
     this.lemmyClient,
-    this.subtitle,
     this.commentId,
+    required this.subtitle,
   });
 
   /// The filtering to be applied to the feed.
@@ -47,9 +41,9 @@ class ModlogFeedPage extends StatefulWidget {
   /// An optional lemmy client to use a different instance and override the singleton
   final LemmyClient? lemmyClient;
 
-  /// An optional widget to display as the subtitle on the app bar.
+  /// An optional string to display as the subtitle on the app bar.
   /// If not specified, this will be the instance or community name.
-  final Widget? subtitle;
+  final String subtitle;
 
   @override
   State<ModlogFeedPage> createState() => _ModlogFeedPageState();
@@ -58,16 +52,19 @@ class ModlogFeedPage extends StatefulWidget {
 class _ModlogFeedPageState extends State<ModlogFeedPage> {
   @override
   Widget build(BuildContext context) {
-    return BlocProvider<ModlogBloc>(
-      create: (_) => ModlogBloc(lemmyClient: widget.lemmyClient ?? LemmyClient.instance)
-        ..add(ModlogFeedFetchedEvent(
+    return BlocProvider<ModlogCubit>(
+      create: (_) => ModlogCubit(
+        repository: ModlogRepositoryImpl(
+          client: widget.lemmyClient ?? LemmyClient.instance,
+        ),
+      )..fetchModlogFeed(
           modlogActionType: widget.modlogActionType,
           communityId: widget.communityId,
           userId: widget.userId,
           moderatorId: widget.moderatorId,
           commentId: widget.commentId,
           reset: true,
-        )),
+        ),
       child: ModlogFeedView(lemmyClient: widget.lemmyClient ?? LemmyClient.instance, subtitle: widget.subtitle),
     );
   }
@@ -78,7 +75,7 @@ class ModlogFeedView extends StatefulWidget {
   final LemmyClient lemmyClient;
 
   /// Subtitle to display on app bar
-  final Widget? subtitle;
+  final String subtitle;
 
   const ModlogFeedView({super.key, required this.lemmyClient, required this.subtitle});
 
@@ -105,8 +102,8 @@ class _ModlogFeedViewState extends State<ModlogFeedView> {
       }
 
       // Fetches new modlog events when the user has scrolled past 70% list
-      if (_scrollController.position.pixels > _scrollController.position.maxScrollExtent * 0.7 && context.read<ModlogBloc>().state.status != ModlogStatus.fetching) {
-        context.read<ModlogBloc>().add(const ModlogFeedFetchedEvent());
+      if (_scrollController.position.pixels > _scrollController.position.maxScrollExtent * 0.7 && context.read<ModlogCubit>().state.status != ModlogStatus.fetching) {
+        context.read<ModlogCubit>().fetchModlogFeed();
       }
     });
   }
@@ -117,58 +114,15 @@ class _ModlogFeedViewState extends State<ModlogFeedView> {
     super.dispose();
   }
 
-  /// Returns the name of the moderator or admin of the modlog event if it exists
-  String getModeratorName(ModlogEventItem modlogEventItem) {
-    final l10n = AppLocalizations.of(context)!;
-
-    if (modlogEventItem.moderator != null) {
-      return modlogEventItem.moderator!.name;
-    }
-
-    if (modlogEventItem.admin != null) {
-      return modlogEventItem.admin!.name;
-    }
-
-    switch (modlogEventItem.type) {
-      case ModlogActionType.adminPurgeComment:
-      case ModlogActionType.adminPurgePost:
-      case ModlogActionType.adminPurgeCommunity:
-      case ModlogActionType.adminPurgePerson:
-        return l10n.admin;
-      default:
-        return l10n.moderator(1);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    final thunderState = context.watch<ThunderBloc>().state;
-    final l10n = AppLocalizations.of(context)!;
-
-    Widget? subtitle = widget.subtitle;
-
-    if (subtitle == null) {
-      try {
-        FeedState feedState = context.read<FeedBloc>().state;
-
-        subtitle = feedState.community != null
-            ? CommunityFullNameWidget(
-                context,
-                feedState.community!.communityName,
-                feedState.community!.title,
-                fetchInstanceNameFromUrl(feedState.community!.url),
-              )
-            : Text(widget.lemmyClient.lemmyApiV3.host);
-      } catch (e) {
-        // Ignore if we can't get the FeedBloc from this context
-      }
-    }
+    final hideTopBarOnScroll = context.select<ThunderBloc, bool>((bloc) => bloc.state.hideTopBarOnScroll);
 
     return Scaffold(
       body: SafeArea(
         top: false,
         bottom: false,
-        child: BlocConsumer<ModlogBloc, ModlogState>(
+        child: BlocConsumer<ModlogCubit, ModlogState>(
           listenWhen: (previous, current) {
             if (current.status == ModlogStatus.initial) {
               setState(() => showAppBarTitle = false);
@@ -183,13 +137,13 @@ class _ModlogFeedViewState extends State<ModlogFeedView> {
               WidgetsBinding.instance.addPostFrameCallback((timeStamp) {
                 // Wait until the layout is complete before performing check
                 bool isScrollable = _scrollController.position.maxScrollExtent > _scrollController.position.viewportDimension;
-                if (!isScrollable) context.read<ModlogBloc>().add(const ModlogFeedFetchedEvent());
+                if (!isScrollable) context.read<ModlogCubit>().fetchModlogFeed();
               });
             }
 
             if ((state.status == ModlogStatus.failure) && state.message != null) {
               showSnackbar(state.message!);
-              context.read<ModlogBloc>().add(ModlogFeedClearMessageEvent()); // Clear the message so that it does not spam
+              context.read<ModlogCubit>().clearMessage(); // Clear the message so that it does not spam
             }
           },
           builder: (context, state) {
@@ -198,14 +152,14 @@ class _ModlogFeedViewState extends State<ModlogFeedView> {
             return RefreshIndicator(
               onRefresh: () async {
                 HapticFeedback.mediumImpact();
-                context.read<ModlogBloc>().add(ModlogFeedFetchedEvent(
+                context.read<ModlogCubit>().fetchModlogFeed(
                       modlogActionType: state.modlogActionType,
                       communityId: state.communityId,
                       userId: state.userId,
                       moderatorId: state.moderatorId,
                       commentId: state.commentId,
                       reset: true,
-                    ));
+                    );
               },
               edgeOffset: 95.0, // This offset is placed to allow the correct positioning of the refresh indicator
               child: Stack(
@@ -213,10 +167,7 @@ class _ModlogFeedViewState extends State<ModlogFeedView> {
                   CustomScrollView(
                     controller: _scrollController,
                     slivers: <Widget>[
-                      ModlogFeedPageAppBar(
-                        showAppBarTitle: state.status != ModlogStatus.initial ? true : showAppBarTitle,
-                        subtitle: subtitle,
-                      ),
+                      ModlogFeedPageAppBar(subtitle: Text(widget.subtitle)),
                       // Display loading indicator until the feed is fetched
                       if (state.status == ModlogStatus.initial)
                         const SliverFillRemaining(
@@ -226,104 +177,7 @@ class _ModlogFeedViewState extends State<ModlogFeedView> {
 
                       // Widget representing the list of modlog events on the feed
                       SliverList.builder(
-                        itemBuilder: (context, index) {
-                          TextStyle? metaTextStyle = theme.textTheme.bodyMedium?.copyWith(color: theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.75));
-                          ModlogEventItem event = state.modlogEventItems[index];
-
-                          return Column(
-                            children: [
-                              Divider(
-                                height: 1.0,
-                                thickness: 4.0,
-                                color: ElevationOverlay.applySurfaceTint(
-                                  theme.colorScheme.surface,
-                                  theme.colorScheme.surfaceTint,
-                                  10,
-                                ),
-                              ),
-                              Container(
-                                padding: const EdgeInsets.only(bottom: 8.0, top: 8.0),
-                                child: Wrap(
-                                  spacing: 8.0,
-                                  children: [
-                                    Padding(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                                      child: Row(
-                                        crossAxisAlignment: CrossAxisAlignment.center,
-                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          Container(
-                                            decoration: BoxDecoration(
-                                              color: event.getModlogEventColor().withValues(alpha: 0.2),
-                                              borderRadius: const BorderRadius.all(Radius.elliptical(5, 5)),
-                                            ),
-                                            child: Padding(
-                                              padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-                                              child: Row(
-                                                children: [
-                                                  Padding(
-                                                    padding: const EdgeInsets.only(right: 4.0),
-                                                    child: Icon(
-                                                      event.getModlogEventIcon(),
-                                                      size: 16.0 * thunderState.metadataFontSizeScale.textScaleFactor,
-                                                      color: theme.colorScheme.onSurface,
-                                                    ),
-                                                  ),
-                                                  ScalableText(
-                                                    event.getModlogEventTypeName(),
-                                                    style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
-                                                    fontScale: thunderState.titleFontSizeScale,
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ),
-                                          Wrap(
-                                            spacing: 8.0,
-                                            children: [
-                                              ScalableText(
-                                                getModeratorName(event),
-                                                fontScale: thunderState.metadataFontSizeScale,
-                                                style: metaTextStyle,
-                                              ),
-                                              const Text('·'),
-                                              DateTimePostCardMetaData(dateTime: event.dateTime),
-                                            ],
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    const SizedBox(height: 8.0),
-                                    ModlogItemContextCard(type: event.type, post: event.post, comment: event.comment, community: event.community, user: event.user),
-                                    if (event.reason != null)
-                                      Padding(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                                        child: Column(
-                                          mainAxisSize: MainAxisSize.min,
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Divider(thickness: 1.0, color: theme.dividerColor.withValues(alpha: 0.3)),
-                                            Padding(
-                                              padding: const EdgeInsets.only(bottom: 6.0),
-                                              child: ScalableText(
-                                                l10n.detailedReason('${event.reason}'),
-                                                maxLines: 4,
-                                                overflow: TextOverflow.ellipsis,
-                                                fontScale: thunderState.contentFontSizeScale,
-                                                style: theme.textTheme.bodyMedium?.copyWith(
-                                                  color: theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.90),
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          );
-                        },
+                        itemBuilder: (context, index) => ModlogItemCard(event: state.modlogEventItems[index]),
                         itemCount: state.modlogEventItems.length,
                       ),
 
@@ -340,7 +194,7 @@ class _ModlogFeedViewState extends State<ModlogFeedView> {
                       ),
                     ],
                   ),
-                  if (thunderState.hideTopBarOnScroll)
+                  if (hideTopBarOnScroll)
                     Positioned(
                       child: Container(
                         height: MediaQuery.of(context).padding.top,

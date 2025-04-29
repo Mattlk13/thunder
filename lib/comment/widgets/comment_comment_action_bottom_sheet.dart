@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:lemmy_api_client/v3.dart';
+import 'package:lemmy_api_client/v3.dart' hide ModlogActionType;
 
 import 'package:thunder/account/account.dart';
 import 'package:thunder/comment/enums/comment_action.dart';
+import 'package:thunder/modlog/modlog.dart';
 import 'package:thunder/utils/navigation.dart';
 import 'package:thunder/post/enums/post_action.dart';
 import 'package:thunder/shared/bottom_sheet_action.dart';
@@ -94,7 +95,7 @@ class _CommentCommentActionBottomSheetState extends State<CommentCommentActionBo
         Navigator.of(context).pop();
         await navigateToModlogPage(
           context,
-          subtitle: Text(GlobalContext.l10n.removedComment),
+          subtitle: GlobalContext.l10n.removedComment,
           modlogActionType: ModlogActionType.modRemoveComment,
           commentId: widget.commentView.comment.id,
         );
