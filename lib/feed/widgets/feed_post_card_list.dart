@@ -4,10 +4,10 @@ import 'package:flutter/material.dart';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
-import 'package:lemmy_api_client/v3.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 
 import 'package:thunder/account/account.dart';
+import 'package:thunder/core/enums/enums.dart';
 import 'package:thunder/community/widgets/post_card.dart';
 import 'package:thunder/core/models/post_view_media.dart';
 import 'package:thunder/feed/feed.dart';
@@ -85,7 +85,7 @@ class _FeedPostCardListState extends State<FeedPostCardList> {
     required int index,
     FeedType? feedType,
     bool dim = false,
-    ListingType? postListingType,
+    FeedListType? feedListType,
     bool isUserLoggedIn = false,
   }) {
     final postView = postViewMedia.postView;
@@ -203,7 +203,7 @@ class _FeedPostCardListState extends State<FeedPostCardList> {
             index: index,
             dim: widget.indicateRead ?? dimReadPosts,
             feedType: state.feedType,
-            postListingType: state.postListingType,
+            feedListType: state.feedListType,
             isUserLoggedIn: isUserLoggedIn,
           );
         },
@@ -218,7 +218,7 @@ class _FeedPostCardListState extends State<FeedPostCardList> {
           index: index,
           dim: widget.indicateRead ?? dimReadPosts,
           feedType: state.feedType,
-          postListingType: state.postListingType,
+          feedListType: state.feedListType,
           isUserLoggedIn: isUserLoggedIn,
         );
       },
