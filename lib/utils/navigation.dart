@@ -403,24 +403,7 @@ Future<void> navigateToCreatePostPage(
     ThunderCommunity? pvmCommunity;
 
     if (post != null) {
-      final cv = CommunityView(
-        community: post.community!,
-        subscribed: post.subscribed!,
-        blocked: false,
-        counts: CommunityAggregates(
-          communityId: post.community!.id,
-          subscribers: 0,
-          posts: 0,
-          comments: 0,
-          published: DateTime.now(),
-          usersActiveDay: 0,
-          usersActiveWeek: 0,
-          usersActiveMonth: 0,
-          usersActiveHalfYear: 0,
-        ),
-      );
-
-      pvmCommunity = ThunderCommunity(cv.community, communityView: cv);
+      pvmCommunity = post.community;
     }
 
     await Navigator.of(context).push(SwipeablePageRoute(
@@ -447,13 +430,13 @@ Future<void> navigateToCreatePostPage(
             community: community ?? (post != null ? pvmCommunity : null),
             post: post,
             isCrossPost: isCrossPost,
-            onPostSuccess: (ThunderPost post, bool userChanged) {
+            onPostSuccess: (ThunderPost updatedPost, bool userChanged) {
               // Update the existing post view media if it exists
               if (feedBloc != null) {
-                feedBloc.add(FeedItemUpdatedEvent(post: post));
+                feedBloc.add(FeedItemUpdatedEvent(post: updatedPost));
               }
               if (postBloc != null) {
-                postBloc.add(PostUpdatedEvent(post: post));
+                postBloc.add(PostUpdatedEvent(post: updatedPost));
               }
 
               // Show snackbar message if the post was just created
@@ -463,7 +446,7 @@ Future<void> navigateToCreatePostPage(
                     l10n.postCreatedSuccessfully,
                     trailingIcon: Icons.remove_red_eye_rounded,
                     trailingAction: () {
-                      navigateToPost(context, post: post);
+                      navigateToPost(context, post: updatedPost);
                     },
                   );
                 } catch (e) {
@@ -471,7 +454,7 @@ Future<void> navigateToCreatePostPage(
                 }
               }
 
-              if (onPostSuccess != null) onPostSuccess(post, userChanged);
+              if (onPostSuccess != null) onPostSuccess(updatedPost, userChanged);
             },
           ),
         );
