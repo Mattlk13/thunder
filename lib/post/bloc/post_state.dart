@@ -13,55 +13,43 @@ enum PostStatus {
 class PostState extends Equatable {
   PostState({
     this.status = PostStatus.initial,
-    this.postId,
     this.post,
-    this.comments = const [],
     this.commentNodes,
     this.commentResponseMap = const <int, CommentView>{},
     this.commentPage = 1,
     this.commentCount = 0,
-    this.communityId,
     this.moderators,
     this.crossPosts,
     this.hasReachedCommentEnd = false,
     this.errorMessage,
     this.sortType,
-    this.sortTypeIcon,
-    this.selectedCommentId,
+    this.highlightedCommentId,
     this.selectedCommentPath,
-    this.newlyCreatedCommentId,
     this.moddingCommentId = -1,
-    this.viewAllCommentsRefresh = false,
     this.navigateCommentIndex = 0,
-    this.navigateCommentId = 0,
-    this.commentMatches,
+    this.commentSearchResults,
     this.scrollPosition,
     this.didScrollPositionChange = false,
     this.collapsedComments = const [],
   });
 
+  /// The current status of the post
   final PostStatus status;
 
-  final bool viewAllCommentsRefresh;
-
+  /// The sort type of the post comments
   final CommentSortType? sortType;
-  final IconData? sortTypeIcon;
 
-  final int? postId;
-  final int? communityId;
   final List<CommunityModeratorView>? moderators;
   final List<ThunderPost>? crossPosts;
   ThunderPost? post;
 
   // Comment related data
-  final List<CommentViewTree> comments;
   final CommentNode? commentNodes;
   final Map<int, CommentView> commentResponseMap;
   final int commentPage;
   final int commentCount;
   final bool hasReachedCommentEnd;
-  final int? selectedCommentId;
-  final int? newlyCreatedCommentId;
+  final int? highlightedCommentId;
   final String? selectedCommentPath;
 
   // This is to track what comment is being restored or deleted so we can
@@ -71,11 +59,7 @@ class PostState extends Equatable {
   final String? errorMessage;
 
   final int navigateCommentIndex;
-  final List<Comment>? commentMatches;
-
-  // This exists purely for forcing the bloc to refire
-  // even if the comment index doesn't change
-  final int navigateCommentId;
+  final Map<int, int>? commentSearchResults;
 
   /// Saves the position of the user's scrolling while viewing a post
   final double? scrollPosition;
@@ -89,9 +73,7 @@ class PostState extends Equatable {
 
   PostState copyWith({
     required PostStatus status,
-    int? postId,
     ThunderPost? post,
-    List<CommentViewTree>? comments,
     CommentNode? commentNodes,
     Map<int, CommentView>? commentResponseMap,
     int? commentPage,
@@ -102,43 +84,32 @@ class PostState extends Equatable {
     List<ThunderPost>? crossPosts,
     String? errorMessage,
     CommentSortType? sortType,
-    IconData? sortTypeIcon,
-    int? selectedCommentId,
+    int? highlightedCommentId,
     String? selectedCommentPath,
-    int? newlyCreatedCommentId,
     int? moddingCommentId,
-    bool? viewAllCommentsRefresh = false,
     int? navigateCommentIndex,
-    int? navigateCommentId,
-    List<Comment>? commentMatches,
+    Map<int, int>? commentSearchResults,
     double? scrollPosition,
     bool? didScrollPositionChange,
     List<int>? collapsedComments,
   }) {
     return PostState(
       status: status,
-      postId: postId ?? this.postId,
       post: post ?? this.post,
-      comments: comments ?? this.comments,
       commentNodes: commentNodes ?? this.commentNodes,
       commentResponseMap: commentResponseMap ?? this.commentResponseMap,
       commentPage: commentPage ?? this.commentPage,
       commentCount: commentCount ?? this.commentCount,
       hasReachedCommentEnd: hasReachedCommentEnd ?? this.hasReachedCommentEnd,
-      communityId: communityId ?? this.communityId,
       moderators: moderators ?? this.moderators,
       crossPosts: crossPosts ?? this.crossPosts,
       errorMessage: errorMessage ?? this.errorMessage,
       sortType: sortType ?? this.sortType,
-      sortTypeIcon: sortTypeIcon ?? this.sortTypeIcon,
-      selectedCommentId: selectedCommentId,
+      highlightedCommentId: highlightedCommentId,
       selectedCommentPath: selectedCommentPath,
-      newlyCreatedCommentId: newlyCreatedCommentId,
       moddingCommentId: moddingCommentId ?? this.moddingCommentId,
-      viewAllCommentsRefresh: viewAllCommentsRefresh ?? false,
       navigateCommentIndex: navigateCommentIndex ?? 0,
-      navigateCommentId: navigateCommentId ?? 0,
-      commentMatches: commentMatches ?? this.commentMatches,
+      commentSearchResults: commentSearchResults ?? this.commentSearchResults,
       scrollPosition: scrollPosition ?? this.scrollPosition,
       didScrollPositionChange: didScrollPositionChange ?? false,
       collapsedComments: collapsedComments ?? this.collapsedComments,
@@ -148,27 +119,20 @@ class PostState extends Equatable {
   @override
   List<Object?> get props => [
         status,
-        postId,
         post,
-        comments,
         commentNodes,
         commentPage,
         commentCount,
-        communityId,
         moderators,
         crossPosts,
         errorMessage,
         hasReachedCommentEnd,
         sortType,
-        sortTypeIcon,
-        selectedCommentId,
+        highlightedCommentId,
         selectedCommentPath,
-        newlyCreatedCommentId,
-        viewAllCommentsRefresh,
         moddingCommentId,
         navigateCommentIndex,
-        navigateCommentId,
-        commentMatches,
+        commentSearchResults,
         scrollPosition,
         didScrollPositionChange,
         collapsedComments,

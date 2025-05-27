@@ -12,20 +12,18 @@ class GetPostEvent extends PostEvent {
   final ThunderPost? post;
   final CommentSortType? sortType;
   final String? selectedCommentPath;
-  final int? selectedCommentId;
-  final int? newlyCreatedCommentId;
+  final int? highlightedCommentId;
 
-  const GetPostEvent({this.sortType, this.post, this.postId, this.selectedCommentPath, this.selectedCommentId, this.newlyCreatedCommentId});
+  const GetPostEvent({this.sortType, this.post, this.postId, this.selectedCommentPath, this.highlightedCommentId});
 }
 
 class GetPostCommentsEvent extends PostEvent {
   final int? postId;
   final int? commentParentId;
   final bool reset;
-  final bool viewAllCommentsRefresh;
   final CommentSortType? sortType;
 
-  const GetPostCommentsEvent({this.postId, this.commentParentId, this.reset = false, this.viewAllCommentsRefresh = false, this.sortType});
+  const GetPostCommentsEvent({this.postId, this.commentParentId, this.reset = false, this.sortType});
 }
 
 class VotePostEvent extends PostEvent {
@@ -66,9 +64,9 @@ class NavigateCommentEvent extends PostEvent {
 }
 
 class StartCommentSearchEvent extends PostEvent {
-  final List<Comment> commentMatches;
+  final Map<int, int> commentSearchResults;
 
-  const StartCommentSearchEvent({required this.commentMatches});
+  const StartCommentSearchEvent({required this.commentSearchResults});
 }
 
 class ContinueCommentSearchEvent extends PostEvent {
