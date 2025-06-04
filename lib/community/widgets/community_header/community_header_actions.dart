@@ -8,7 +8,6 @@ import 'package:thunder/account/account.dart';
 import 'package:thunder/community/bloc/anonymous_subscriptions_bloc.dart';
 import 'package:thunder/community/bloc/community_bloc.dart';
 import 'package:thunder/community/enums/community_action.dart';
-import 'package:thunder/community/widgets/community_information.dart';
 import 'package:thunder/core/enums/full_name.dart';
 import 'package:thunder/core/models/models.dart';
 import 'package:thunder/core/singletons/lemmy_client.dart';
@@ -120,7 +119,6 @@ class _ActionChipsList extends StatelessWidget {
     return Row(
       spacing: 8.0,
       children: [
-        _InfoActionChip(community: community, instance: instance, moderators: moderators),
         _SortActionChip(),
         ..._getAuthenticatedActions(context),
         _SearchActionChip(),
@@ -142,48 +140,8 @@ class _ActionChipsList extends StatelessWidget {
       _SubscriptionActionChip(community: community),
       if (community.subscribed != SubscribedType.notSubscribed) _FavoritesActionChip(community: community),
       _CreatePostActionChip(community: community),
-      _BlockActionChip(community: community),
+      if (community.subscribed == SubscribedType.notSubscribed) _BlockActionChip(community: community),
     ];
-  }
-}
-
-/// Action chip for displaying community information.
-class _InfoActionChip extends StatelessWidget {
-  /// Community to display actions for
-  final ThunderCommunity community;
-
-  /// Instance of the community
-  final ThunderInstance instance;
-
-  /// List of moderators for the community
-  final List<ThunderUser> moderators;
-
-  const _InfoActionChip({
-    required this.community,
-    required this.instance,
-    required this.moderators,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = GlobalContext.l10n;
-
-    return ThunderActionChip(
-      icon: Icons.info_outline_rounded,
-      label: l10n.about,
-      onPressed: () => showModalBottomSheet(
-        context: context,
-        showDragHandle: true,
-        enableDrag: true,
-        useSafeArea: true,
-        scrollControlDisabledMaxHeightRatio: 0.90,
-        builder: (context) => CommunityInformation(
-          community: community,
-          instance: instance,
-          moderators: moderators,
-        ),
-      ),
-    );
   }
 }
 
@@ -268,7 +226,7 @@ class _SubscriptionActionChip extends StatelessWidget {
 
     return switch (subscribed) {
       SubscribedType.notSubscribed => l10n.subscribe,
-      SubscribedType.pending => l10n.unsubscribePending,
+      SubscribedType.pending => l10n.pending,
       SubscribedType.subscribed => l10n.unsubscribe,
       _ => '',
     };
@@ -336,7 +294,7 @@ class _FavoritesActionChip extends StatelessWidget {
 
     return ThunderActionChip(
       icon: favorited ? Icons.star_rounded : Icons.star_border_rounded,
-      label: favorited ? l10n.removeFromFavorites : l10n.addToFavorites,
+      label: favorited ? l10n.unfavorite : l10n.favorite,
       onPressed: () => toggleFavoriteCommunity(context, community, favorited),
     );
   }
@@ -355,7 +313,7 @@ class _CreatePostActionChip extends StatelessWidget {
 
     return ThunderActionChip(
       icon: Icons.library_books_rounded,
-      label: l10n.createPost,
+      label: l10n.newPost,
       onPressed: () {
         HapticFeedback.mediumImpact();
         navigateToCreatePostPage(context, communityId: community.id, community: community);

@@ -7,51 +7,19 @@ import 'package:thunder/localizations/app_localizations.dart';
 import 'package:thunder/account/account.dart';
 import 'package:thunder/core/enums/full_name.dart';
 import 'package:thunder/core/enums/local_settings.dart';
-import 'package:thunder/core/singletons/lemmy_client.dart';
 import 'package:thunder/feed/bloc/feed_bloc.dart';
-import 'package:thunder/feed/utils/user_share.dart';
 import 'package:thunder/feed/utils/utils.dart';
-import 'package:thunder/shared/sort_picker.dart';
-import 'package:thunder/shared/thunder_popup_menu_item.dart';
 import 'package:thunder/thunder/bloc/thunder_bloc.dart';
 import 'package:thunder/utils/constants.dart';
 import 'package:thunder/utils/instance.dart';
 import 'package:thunder/utils/navigation.dart';
 
 /// Holds the app bar for the account page
-class AccountPageAppBar extends StatefulWidget {
-  const AccountPageAppBar({
-    super.key,
-    this.showAppBarTitle = true,
-    this.showSaved = false,
-    this.onToggleSaved,
-  });
+class AccountPageAppBar extends StatelessWidget {
+  const AccountPageAppBar({super.key, this.showAppBarTitle = true});
 
   /// Whether to show the app bar title
   final bool showAppBarTitle;
-
-  /// Whether or not to show saved posts/comments
-  final bool showSaved;
-
-  /// Callback to show saved posts/comments
-  final Function(bool showSaved)? onToggleSaved;
-
-  @override
-  State<AccountPageAppBar> createState() => _AccountPageAppBarState();
-}
-
-class _AccountPageAppBarState extends State<AccountPageAppBar> {
-  /// Whether or not to show saved posts. We store a local variable here so that the icon can be optimistically updated
-  bool showSaved = false;
-
-  @override
-  void didUpdateWidget(covariant AccountPageAppBar oldWidget) {
-    super.didUpdateWidget(oldWidget);
-
-    if (showSaved != widget.showSaved && context.read<FeedBloc>().state.status == FeedStatus.success) {
-      setState(() => showSaved = widget.showSaved);
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -64,7 +32,7 @@ class _AccountPageAppBarState extends State<AccountPageAppBar> {
       titleSpacing: 0.0,
       toolbarHeight: APP_BAR_HEIGHT,
       surfaceTintColor: state.hideTopBarOnScroll ? Colors.transparent : null,
-      title: AccountAppBarTitle(visible: widget.showAppBarTitle),
+      title: AccountAppBarTitle(visible: showAppBarTitle),
       leading: IconButton(
         onPressed: () {
           HapticFeedback.mediumImpact();
@@ -73,15 +41,7 @@ class _AccountPageAppBarState extends State<AccountPageAppBar> {
         icon: Icon(Icons.people_alt_rounded, semanticLabel: l10n.profiles),
         tooltip: l10n.profiles,
       ),
-      actions: [
-        AccountAppBarUserActions(
-          showSaved: showSaved,
-          onToggleSaved: (showSaved) {
-            setState(() => this.showSaved = showSaved);
-            widget.onToggleSaved?.call(showSaved);
-          },
-        )
-      ],
+      actions: [AccountAppBarUserActions()],
     );
   }
 }
@@ -122,27 +82,20 @@ class AccountAppBarTitle extends StatelessWidget {
 
 /// The actions of the app bar for the account page
 class AccountAppBarUserActions extends StatelessWidget {
-  const AccountAppBarUserActions({super.key, this.showSaved = false, this.onToggleSaved});
-
-  /// Whether to show saved posts/comments
-  final bool showSaved;
-
-  /// Callback when the saved icon is tapped
-  final void Function(bool showSaved)? onToggleSaved;
+  const AccountAppBarUserActions({super.key});
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final feedBloc = context.read<FeedBloc>();
 
     return Row(
       children: [
         IconButton(
-          icon: Icon(showSaved ? Icons.bookmark_rounded : Icons.bookmark_border_rounded, semanticLabel: l10n.saved),
-          tooltip: showSaved ? l10n.showOwnContent : l10n.showSavedContent,
+          icon: Icon(Icons.refresh_rounded, semanticLabel: l10n.refresh),
+          tooltip: l10n.refresh,
           onPressed: () {
             HapticFeedback.mediumImpact();
-            onToggleSaved?.call(!showSaved);
+            triggerRefresh(context);
           },
         ),
         IconButton(
@@ -152,41 +105,6 @@ class AccountAppBarUserActions extends StatelessWidget {
             HapticFeedback.mediumImpact();
             navigateToSettingPage(context, LocalSettings.settingsPageAccount);
           },
-        ),
-        Semantics(
-          label: l10n.menu,
-          child: PopupMenuButton(
-            onOpened: () => HapticFeedback.mediumImpact(),
-            itemBuilder: (context) => [
-              ThunderPopupMenuItem(
-                icon: Icons.sort,
-                title: l10n.sortBy,
-                onTap: () {
-                  showModalBottomSheet<void>(
-                    showDragHandle: true,
-                    context: context,
-                    isScrollControlled: true,
-                    builder: (builderContext) => SortPicker(
-                      title: l10n.sortOptions,
-                      onSelect: (selected) async => feedBloc.add(FeedChangeSortTypeEvent(selected.payload)),
-                      previouslySelected: feedBloc.state.sortType,
-                      minimumVersion: LemmyClient.instance.version,
-                    ),
-                  );
-                },
-              ),
-              ThunderPopupMenuItem(
-                icon: Icons.refresh_rounded,
-                title: l10n.refresh,
-                onTap: () => triggerRefresh(context),
-              ),
-              ThunderPopupMenuItem(
-                icon: Icons.share_rounded,
-                title: l10n.share,
-                onTap: () => showUserShareSheet(context, feedBloc.state.fullPersonView!.personView),
-              ),
-            ],
-          ),
         ),
       ],
     );

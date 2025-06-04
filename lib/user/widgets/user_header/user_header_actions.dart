@@ -14,7 +14,6 @@ import 'package:thunder/shared/sort_picker.dart';
 import 'package:thunder/user/bloc/user_bloc.dart';
 import 'package:thunder/user/enums/user_action.dart';
 import 'package:thunder/user/models/user_label.dart';
-import 'package:thunder/user/widgets/user_information.dart';
 import 'package:thunder/utils/bottom_sheet_list_picker.dart';
 import 'package:thunder/utils/global_context.dart';
 
@@ -136,10 +135,10 @@ class _ActionChipsList extends StatelessWidget {
     return Row(
       spacing: 8.0,
       children: [
-        _InfoActionChip(user: user, moderates: moderates),
         if (feedType != null && onChangeFeedType != null) _FeedTypeActionChip(feedType: feedType!, onChangeFeedType: onChangeFeedType!),
+        if (isOwnProfile) _SavedActionChip(),
         _SortActionChip(),
-        _LabelActionChip(user: user),
+        if (!isOwnProfile) _LabelActionChip(user: user),
         if (isLoggedIn && !isOwnProfile && user.admin != true) _BlockActionChip(user: user),
         _ShareActionChip(user: user),
       ],
@@ -147,37 +146,56 @@ class _ActionChipsList extends StatelessWidget {
   }
 }
 
-/// Action chip for displaying user information.
-class _InfoActionChip extends StatelessWidget {
-  /// User to display actions for
-  final ThunderUser user;
+/// Action chip for toggling saved posts/comments.
+class _SavedActionChip extends StatefulWidget {
+  @override
+  State<_SavedActionChip> createState() => _SavedActionChipState();
+}
 
-  /// Communities the user moderates
-  final List<ThunderCommunity> moderates;
+class _SavedActionChipState extends State<_SavedActionChip> {
+  /// Whether or not to show saved posts. We store a local variable here so that the icon can be optimistically updated
+  bool showSaved = false;
 
-  const _InfoActionChip({
-    required this.user,
-    required this.moderates,
-  });
+  @override
+  void didUpdateWidget(covariant _SavedActionChip oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    final status = context.read<FeedBloc>().state.status;
+    final showSaved = context.read<FeedBloc>().state.showSaved;
+
+    if (this.showSaved != showSaved && status == FeedStatus.success) {
+      setState(() => this.showSaved = showSaved);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final l10n = GlobalContext.l10n;
+    final theme = Theme.of(context);
 
     return ThunderActionChip(
-      icon: Icons.info_outline_rounded,
-      label: l10n.about,
-      onPressed: () => showModalBottomSheet(
-        context: context,
-        showDragHandle: true,
-        enableDrag: true,
-        useSafeArea: true,
-        scrollControlDisabledMaxHeightRatio: 0.90,
-        builder: (context) => UserInformation(
-          user: user,
-          moderates: moderates,
-        ),
-      ),
+      icon: showSaved ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+      label: l10n.saved,
+      backgroundColor: showSaved ? theme.colorScheme.primaryContainer.withValues(alpha: 0.25) : null,
+      onPressed: () {
+        HapticFeedback.mediumImpact();
+        setState(() => showSaved = !showSaved);
+
+        final state = context.read<FeedBloc>().state;
+        context.read<FeedBloc>().add(
+              FeedFetchedEvent(
+                feedType: FeedType.account,
+                feedListType: state.feedListType,
+                sortType: state.sortType,
+                communityId: state.communityId,
+                communityName: state.communityName,
+                userId: state.userId,
+                username: state.username,
+                reset: true,
+                showHidden: state.showHidden,
+                showSaved: showSaved,
+              ),
+            );
+      },
     );
   }
 }
