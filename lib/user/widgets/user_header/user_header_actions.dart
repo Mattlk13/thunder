@@ -185,7 +185,7 @@ class _SavedActionChipState extends State<_SavedActionChip> {
               FeedFetchedEvent(
                 feedType: FeedType.account,
                 feedListType: state.feedListType,
-                sortType: state.sortType,
+                postSortType: state.postSortType,
                 communityId: state.communityId,
                 communityName: state.communityName,
                 userId: state.userId,
@@ -296,12 +296,12 @@ class _SortActionChip extends StatelessWidget {
             title: l10n.sortOptions,
             onSelect: (selected) async {
               try {
-                context.read<FeedBloc>().add(FeedChangeSortTypeEvent(selected.payload));
+                context.read<FeedBloc>().add(FeedChangePostSortTypeEvent(selected.payload));
               } catch (e) {
                 debugPrint('Failed to update sort type: $e');
               }
             },
-            previouslySelected: state.sortType,
+            previouslySelected: state.postSortType,
             minimumVersion: LemmyClient.instance.version,
           ),
         );

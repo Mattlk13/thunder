@@ -5,11 +5,12 @@ import 'package:flutter/material.dart';
 
 import 'package:collection/collection.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:lemmy_api_client/v3.dart' hide ModlogActionType;
+import 'package:lemmy_api_client/v3.dart' hide ModlogActionType, CommentSortType;
 import 'package:swipeable_page_route/swipeable_page_route.dart';
+
+import 'package:thunder/core/enums/comment_sort_type.dart';
 import 'package:thunder/core/enums/full_name.dart';
 import 'package:thunder/localizations/app_localizations.dart';
-
 import 'package:thunder/account/account.dart';
 import 'package:thunder/comment/comment.dart';
 import 'package:thunder/community/bloc/anonymous_subscriptions_bloc.dart';
@@ -17,6 +18,7 @@ import 'package:thunder/community/bloc/community_bloc.dart';
 import 'package:thunder/community/pages/create_post_page.dart';
 import 'package:thunder/core/enums/enums.dart';
 import 'package:thunder/core/enums/local_settings.dart';
+import 'package:thunder/core/enums/post_sort_type.dart';
 import 'package:thunder/core/models/models.dart';
 import 'package:thunder/core/singletons/lemmy_client.dart';
 import 'package:thunder/feed/bloc/feed_bloc.dart';
@@ -271,7 +273,7 @@ Future<void> navigateToModlogPage(
   pushOnTopOfLoadingPage(context, route);
 }
 
-Future<void> navigateToComment(BuildContext context, CommentView commentView) async {
+Future<void> navigateToComment(BuildContext context, ThunderComment comment) async {
   ProfileBloc profileBloc = context.read<ProfileBloc>();
   ThunderBloc thunderBloc = context.read<ThunderBloc>();
 
@@ -284,8 +286,8 @@ Future<void> navigateToComment(BuildContext context, CommentView commentView) as
   GetPostResponse getPostResponse = await client.run(
     GetPost(
       auth: account.jwt,
-      id: commentView.post.id,
-      commentId: commentView.comment.id,
+      id: comment.post?.id,
+      commentId: comment.id,
     ),
   );
 
@@ -309,8 +311,8 @@ Future<void> navigateToComment(BuildContext context, CommentView commentView) as
       ],
       child: PostPage(
         initialPost: posts.first,
-        highlightedCommentId: commentView.comment.id,
-        commentPath: commentView.comment.path,
+        highlightedCommentId: comment.id,
+        commentPath: comment.path,
         onPostUpdated: (ThunderPost post) {},
       ),
     ),
@@ -322,12 +324,12 @@ Future<void> navigateToComment(BuildContext context, CommentView commentView) as
 Future<void> navigateToCreateCommentPage(
   BuildContext context, {
   ThunderPost? post,
-  CommentView? commentView,
-  CommentView? parentCommentView,
-  Function(CommentView commentView, bool userChanged)? onCommentSuccess,
+  ThunderComment? comment,
+  ThunderComment? parentComment,
+  Function(ThunderComment comment, bool userChanged)? onCommentSuccess,
 }) async {
-  assert(!(post == null && parentCommentView == null && commentView == null));
-  assert(!(post != null && (parentCommentView != null || commentView != null)));
+  assert(!(post == null && parentComment == null && comment == null));
+  assert(!(post != null && (parentComment != null || comment != null)));
 
   final profileBloc = context.read<ProfileBloc>();
   final thunderBloc = context.read<ThunderBloc>();
@@ -352,8 +354,8 @@ Future<void> navigateToCreateCommentPage(
       ],
       child: CreateCommentPage(
         post: post,
-        commentView: commentView,
-        parentCommentView: parentCommentView,
+        comment: comment,
+        parentComment: parentComment,
         onCommentSuccess: onCommentSuccess,
       ),
     ),
@@ -497,7 +499,7 @@ void navigateToNotificationReplyPage(BuildContext context, {required int? replyI
   // Load the notifications
   while (!doneFetching) {
     final GetRepliesResponse getRepliesResponse = await (LemmyClient()..changeBaseUrl(account.instance)).lemmyApiV3.run(GetReplies(
-          sort: CommentSortType.new_,
+          sort: CommentSortType.new_.toLemmyType(),
           page: currentPage,
           limit: 50,
           unreadOnly: replyId == null,
@@ -582,7 +584,7 @@ Future<void> navigateToFeedPage(
   BuildContext context, {
   required FeedType feedType,
   FeedListType? feedListType,
-  SortType? sortType,
+  PostSortType? postSortType,
   String? communityName,
   int? communityId,
   String? username,
@@ -603,7 +605,10 @@ Future<void> navigateToFeedPage(
           FeedFetchedEvent(
             feedType: feedType,
             feedListType: feedListType,
-            sortType: sortType ?? profileBloc.state.getSiteResponse?.myUser?.localUserView.localUser.defaultSortType ?? thunderBloc.state.sortTypeForInstance,
+            postSortType: postSortType ??
+                (profileBloc.state.getSiteResponse?.myUser?.localUserView.localUser.defaultSortType != null
+                    ? PostSortTypeMapping.fromLemmyType(profileBloc.state.getSiteResponse!.myUser!.localUserView.localUser.defaultSortType)
+                    : thunderBloc.state.postSortTypeForInstance),
             communityId: communityId,
             communityName: communityName,
             userId: userId,
@@ -635,7 +640,10 @@ Future<void> navigateToFeedPage(
       child: Material(
         child: FeedPage(
           feedType: feedType,
-          sortType: sortType ?? profileBloc.state.getSiteResponse?.myUser?.localUserView.localUser.defaultSortType ?? thunderBloc.state.sortTypeForInstance,
+          postSortType: postSortType ??
+              (profileBloc.state.getSiteResponse?.myUser?.localUserView.localUser.defaultSortType != null
+                  ? PostSortTypeMapping.fromLemmyType(profileBloc.state.getSiteResponse!.myUser!.localUserView.localUser.defaultSortType)
+                  : thunderBloc.state.postSortTypeForInstance),
           communityName: communityName,
           communityId: communityId,
           userId: userId,

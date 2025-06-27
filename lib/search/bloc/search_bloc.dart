@@ -9,6 +9,7 @@ import 'package:collection/collection.dart';
 import 'package:thunder/account/account.dart';
 import 'package:thunder/core/enums/enums.dart';
 import 'package:thunder/core/enums/meta_search_type.dart';
+import 'package:thunder/core/enums/post_sort_type.dart';
 import 'package:thunder/core/models/models.dart';
 import 'package:thunder/core/singletons/lemmy_client.dart';
 import 'package:thunder/feed/utils/community.dart';
@@ -132,7 +133,7 @@ class SearchBloc extends Bloc<SearchEvent, SearchState> {
           q: event.query,
           page: 1,
           limit: 15,
-          sort: event.sortType,
+          sort: event.postSortType.toLemmyType(),
           listingType: event.feedListType.toLemmyType(),
           type: event.searchType.searchType,
           communityId: event.communityId,
@@ -185,7 +186,7 @@ class SearchBloc extends Bloc<SearchEvent, SearchState> {
         status: SearchStatus.success,
         communities: prioritizeFavorites(searchResponse?.communities.map((cv) => ThunderCommunity(cv.community, communityView: cv)).toList(), event.favoriteCommunities),
         users: searchResponse?.users,
-        comments: searchResponse?.comments,
+        comments: searchResponse?.comments.map((cv) => ThunderComment(comment: cv.comment, commentView: cv)).toList(),
         posts: await parsePosts(searchResponse?.posts ?? []),
         instances: instances,
         page: 2,
@@ -224,7 +225,7 @@ class SearchBloc extends Bloc<SearchEvent, SearchState> {
               q: event.query,
               page: state.page,
               limit: 15,
-              sort: event.sortType,
+              sort: event.postSortType.toLemmyType(),
               listingType: event.feedListType.toLemmyType(),
               type: event.searchType.searchType,
               communityId: event.communityId,
@@ -239,7 +240,7 @@ class SearchBloc extends Bloc<SearchEvent, SearchState> {
           // Append the search results
           state.communities = [...state.communities ?? [], ...searchResponse?.communities.map((cv) => ThunderCommunity(cv.community, communityView: cv)) ?? []];
           state.users = [...state.users ?? [], ...searchResponse?.users ?? []];
-          state.comments = [...state.comments ?? [], ...searchResponse?.comments ?? []];
+          state.comments = [...state.comments ?? [], ...searchResponse?.comments.map((cv) => ThunderComment(comment: cv.comment, commentView: cv)) ?? []];
           state.posts = [...state.posts ?? [], ...await parsePosts(searchResponse?.posts ?? [])];
 
           return emit(state.copyWith(
@@ -349,7 +350,7 @@ class SearchBloc extends Bloc<SearchEvent, SearchState> {
 
       final response = await lemmy.run(ListCommunities(
         type: ListingType.local,
-        sort: SortType.active,
+        sort: PostSortType.active.toLemmyType(),
         limit: 5,
         auth: account.jwt,
       ));
@@ -367,18 +368,18 @@ class SearchBloc extends Bloc<SearchEvent, SearchState> {
     emit(state.copyWith(status: SearchStatus.performingCommentAction));
 
     try {
-      CommentView updatedCommentView = await voteComment(event.commentId, event.score).timeout(timeout, onTimeout: () {
+      ThunderComment updatedComment = await voteComment(event.commentId, event.score).timeout(timeout, onTimeout: () {
         throw Exception(l10n.timeoutUpvoteComment);
       });
 
       // If it worked, update and emit
-      CommentView? commentView = state.comments?.firstWhereOrNull((commentView) => commentView.comment.id == event.commentId);
-      if (commentView != null) {
-        int index = (state.comments?.indexOf(commentView))!;
+      ThunderComment? comment = state.comments?.firstWhereOrNull((comment) => comment.id == event.commentId);
+      if (comment != null) {
+        int index = (state.comments?.indexOf(comment))!;
 
-        List<CommentView> comments = List.from(state.comments ?? []);
-        comments.insert(index, updatedCommentView);
-        comments.remove(commentView);
+        List<ThunderComment> comments = List.from(state.comments ?? []);
+        comments.insert(index, updatedComment);
+        comments.remove(comment);
 
         emit(state.copyWith(status: SearchStatus.success, comments: comments));
       }
@@ -393,18 +394,18 @@ class SearchBloc extends Bloc<SearchEvent, SearchState> {
     emit(state.copyWith(status: SearchStatus.performingCommentAction));
 
     try {
-      CommentView updatedCommentView = await saveComment(event.commentId, event.save).timeout(timeout, onTimeout: () {
+      ThunderComment updatedComment = await saveComment(event.commentId, event.save).timeout(timeout, onTimeout: () {
         throw Exception(l10n.timeoutUpvoteComment);
       });
 
       // If it worked, update and emit
-      CommentView? commentView = state.comments?.firstWhereOrNull((commentView) => commentView.comment.id == event.commentId);
-      if (commentView != null) {
-        int index = (state.comments?.indexOf(commentView))!;
+      ThunderComment? comment = state.comments?.firstWhereOrNull((comment) => comment.id == event.commentId);
+      if (comment != null) {
+        int index = (state.comments?.indexOf(comment))!;
 
-        List<CommentView> comments = List.from(state.comments ?? []);
-        comments.insert(index, updatedCommentView);
-        comments.remove(commentView);
+        List<ThunderComment> comments = List.from(state.comments ?? []);
+        comments.insert(index, updatedComment);
+        comments.remove(comment);
 
         emit(state.copyWith(status: SearchStatus.success, comments: comments));
       }

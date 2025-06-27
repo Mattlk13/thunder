@@ -1,14 +1,16 @@
 import 'package:flutter/foundation.dart';
 import 'package:lemmy_api_client/v3.dart';
-import 'package:thunder/localizations/app_localizations.dart';
 
 import 'package:thunder/account/account.dart';
 import 'package:thunder/core/enums/enums.dart';
 import 'package:thunder/core/enums/local_settings.dart';
+import 'package:thunder/core/enums/post_sort_type.dart';
+import 'package:thunder/core/enums/subscription_status.dart';
 import 'package:thunder/core/models/models.dart';
 import 'package:thunder/core/singletons/lemmy_client.dart';
 import 'package:thunder/core/singletons/preferences.dart';
 import 'package:thunder/feed/enums/feed_type_subview.dart';
+import 'package:thunder/localizations/app_localizations.dart';
 import 'package:thunder/post/utils/post.dart';
 import 'package:thunder/utils/global_context.dart';
 
@@ -17,7 +19,7 @@ import 'package:thunder/utils/global_context.dart';
 Future<Map<String, dynamic>> fetchFeedItems({
   int page = 1,
   FeedListType? feedListType,
-  SortType? sortType,
+  PostSortType? postSortType,
   int? communityId,
   String? communityName,
   int? userId,
@@ -37,7 +39,7 @@ Future<Map<String, dynamic>> fetchFeedItems({
   bool hasReachedCommentsEnd = false;
 
   List<ThunderPost> posts = [];
-  List<CommentView> commentViews = [];
+  List<ThunderComment> comments = [];
 
   int startingPage = page, currentPage = page;
 
@@ -47,7 +49,7 @@ Future<Map<String, dynamic>> fetchFeedItems({
       GetPostsResponse getPostsResponse = await lemmy.run(GetPosts(
         auth: account.jwt,
         page: currentPage,
-        sort: sortType,
+        sort: postSortType?.toLemmyType(),
         type: feedListType?.toLemmyType(),
         communityId: communityId,
         communityName: communityName,
@@ -103,7 +105,7 @@ Future<Map<String, dynamic>> fetchFeedItems({
         personId: userId,
         username: username,
         page: currentPage,
-        sort: sortType,
+        sort: postSortType?.toLemmyType(),
         savedOnly: showSaved,
       ));
 
@@ -117,15 +119,15 @@ Future<Map<String, dynamic>> fetchFeedItems({
       List<ThunderPost> formattedPosts = await parsePosts(getPersonDetailsResponse.posts);
       posts.addAll(formattedPosts);
 
-      commentViews.addAll(getPersonDetailsResponse.comments);
+      comments.addAll(getPersonDetailsResponse.comments.map((commentView) => ThunderComment(comment: commentView.comment, commentView: commentView)));
 
       if (getPersonDetailsResponse.posts.isEmpty) hasReachedPostsEnd = true;
       if (getPersonDetailsResponse.comments.isEmpty) hasReachedCommentsEnd = true;
       currentPage++;
-    } while (feedTypeSubview == FeedTypeSubview.post ? (!hasReachedPostsEnd && posts.length < desiredPosts) : (!hasReachedCommentsEnd && commentViews.length < desiredPosts));
+    } while (feedTypeSubview == FeedTypeSubview.post ? (!hasReachedPostsEnd && posts.length < desiredPosts) : (!hasReachedCommentsEnd && comments.length < desiredPosts));
   }
 
-  return {'posts': posts, 'commentViews': commentViews, 'hasReachedPostsEnd': hasReachedPostsEnd, 'hasReachedCommentsEnd': hasReachedCommentsEnd, 'currentPage': currentPage};
+  return {'posts': posts, 'comments': comments, 'hasReachedPostsEnd': hasReachedPostsEnd, 'hasReachedCommentsEnd': hasReachedCommentsEnd, 'currentPage': currentPage};
 }
 
 /// Logic to create a post
@@ -254,7 +256,7 @@ Future<ThunderPost?> createExamplePost({
       downvotes: 0,
       published: DateTime.now(),
     ),
-    subscribed: SubscribedType.notSubscribed,
+    subscribed: SubscriptionStatus.notSubscribed.toLemmyType(),
     saved: saved ?? false,
     read: read ?? false,
     creatorBlocked: false,

@@ -1,10 +1,14 @@
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:bloc_concurrency/bloc_concurrency.dart';
-import 'package:lemmy_api_client/v3.dart';
+import 'package:lemmy_api_client/v3.dart' hide CommentSortType;
 import 'package:stream_transform/stream_transform.dart';
-import 'package:thunder/localizations/app_localizations.dart';
 
+import 'package:thunder/core/enums/comment_sort_type.dart';
+import 'package:thunder/core/extensions/comment_reply_view.dart';
+import 'package:thunder/core/extensions/person_mention_view.dart';
+import 'package:thunder/core/models/models.dart';
+import 'package:thunder/localizations/app_localizations.dart';
 import 'package:thunder/account/account.dart';
 import 'package:thunder/comment/comment.dart';
 import 'package:thunder/core/singletons/lemmy_client.dart';
@@ -79,7 +83,7 @@ class InboxBloc extends Bloc<InboxEvent, InboxState> {
                 auth: account.jwt!,
                 unreadOnly: !event.showAll,
                 limit: limit,
-                sort: event.commentSortType,
+                sort: event.commentSortType.toLemmyType(),
                 page: 1,
               ),
             );
@@ -89,7 +93,7 @@ class InboxBloc extends Bloc<InboxEvent, InboxState> {
               GetPersonMentions(
                 auth: account.jwt!,
                 unreadOnly: !event.showAll,
-                sort: event.commentSortType,
+                sort: event.commentSortType.toLemmyType(),
                 limit: limit,
                 page: 1,
               ),
@@ -111,7 +115,7 @@ class InboxBloc extends Bloc<InboxEvent, InboxState> {
                 auth: account.jwt!,
                 unreadOnly: !event.showAll,
                 limit: limit,
-                sort: event.commentSortType,
+                sort: event.commentSortType.toLemmyType(),
                 page: 1,
               ),
             );
@@ -119,7 +123,7 @@ class InboxBloc extends Bloc<InboxEvent, InboxState> {
               GetPersonMentions(
                 auth: account.jwt!,
                 unreadOnly: !event.showAll,
-                sort: event.commentSortType,
+                sort: event.commentSortType.toLemmyType(),
                 limit: limit,
                 page: 1,
               ),
@@ -174,7 +178,7 @@ class InboxBloc extends Bloc<InboxEvent, InboxState> {
               auth: account.jwt!,
               unreadOnly: state.showUnreadOnly,
               limit: limit,
-              sort: event.commentSortType,
+              sort: event.commentSortType.toLemmyType(),
               page: state.inboxReplyPage,
             ),
           );
@@ -186,7 +190,7 @@ class InboxBloc extends Bloc<InboxEvent, InboxState> {
             GetPersonMentions(
               auth: account.jwt!,
               unreadOnly: state.showUnreadOnly,
-              sort: event.commentSortType,
+              sort: event.commentSortType.toLemmyType(),
               limit: limit,
               page: state.inboxMentionPage,
             ),
@@ -263,34 +267,12 @@ class InboxBloc extends Bloc<InboxEvent, InboxState> {
     if (existingCommentReplyView == null && existingPersonMentionView == null && existingPrivateMessageView == null) return emit(state.copyWith(status: InboxStatus.failure));
 
     /// Convert the reply or mention to a comment
-    CommentView? commentView;
+    ThunderComment? comment;
 
     if (existingCommentReplyView != null) {
-      commentView = CommentView(
-        comment: existingCommentReplyView.comment,
-        creator: existingCommentReplyView.creator,
-        post: existingCommentReplyView.post,
-        community: existingCommentReplyView.community,
-        counts: existingCommentReplyView.counts,
-        creatorBannedFromCommunity: existingCommentReplyView.creatorBannedFromCommunity,
-        subscribed: existingCommentReplyView.subscribed,
-        saved: existingCommentReplyView.saved,
-        creatorBlocked: existingCommentReplyView.creatorBlocked,
-        myVote: existingCommentReplyView.myVote as int?,
-      );
+      comment = existingCommentReplyView.toComment();
     } else if (existingPersonMentionView != null) {
-      commentView = CommentView(
-        comment: existingPersonMentionView.comment,
-        creator: existingPersonMentionView.creator,
-        post: existingPersonMentionView.post,
-        community: existingPersonMentionView.community,
-        counts: existingPersonMentionView.counts,
-        creatorBannedFromCommunity: existingPersonMentionView.creatorBannedFromCommunity,
-        subscribed: existingPersonMentionView.subscribed,
-        saved: existingPersonMentionView.saved,
-        creatorBlocked: existingPersonMentionView.creatorBlocked,
-        myVote: existingPersonMentionView.myVote,
-      );
+      comment = existingPersonMentionView.toComment();
     }
 
     switch (event.action) {
@@ -359,19 +341,33 @@ class InboxBloc extends Bloc<InboxEvent, InboxState> {
         }
       case CommentAction.vote:
         try {
-          CommentView updatedCommentView = optimisticallyVoteComment(commentView!, event.value);
+          ThunderComment updatedComment = optimisticallyVoteComment(comment!, event.value);
 
           if (existingCommentReplyView != null) {
-            state.replies[existingIndex] = existingCommentReplyView.copyWith(counts: updatedCommentView.counts, myVote: updatedCommentView.myVote);
+            state.replies[existingIndex] = existingCommentReplyView.copyWith(
+              counts: existingCommentReplyView.counts.copyWith(
+                score: updatedComment.score!,
+                upvotes: updatedComment.upvotes!,
+                downvotes: updatedComment.downvotes!,
+              ),
+              myVote: updatedComment.myVote,
+            );
           } else if (existingPersonMentionView != null) {
-            state.mentions[existingIndex] = existingPersonMentionView.copyWith(counts: updatedCommentView.counts, myVote: updatedCommentView.myVote);
+            state.mentions[existingIndex] = existingPersonMentionView.copyWith(
+              counts: existingPersonMentionView.counts.copyWith(
+                score: updatedComment.score!,
+                upvotes: updatedComment.upvotes!,
+                downvotes: updatedComment.downvotes!,
+              ),
+              myVote: updatedComment.myVote,
+            );
           }
 
           // Immediately set the status, and continue
           emit(state.copyWith(status: InboxStatus.success));
           emit(state.copyWith(status: InboxStatus.refreshing));
 
-          await voteComment(commentView.comment.id, event.value).timeout(timeout, onTimeout: () {
+          await voteComment(comment.id, event.value).timeout(timeout, onTimeout: () {
             // Restore the original comment if vote fails
             if (existingCommentReplyView != null) {
               state.replies[existingIndex] = existingCommentReplyView;
@@ -388,19 +384,19 @@ class InboxBloc extends Bloc<InboxEvent, InboxState> {
         }
       case CommentAction.save:
         try {
-          CommentView updatedCommentView = optimisticallySaveComment(commentView!, event.value);
+          ThunderComment updatedComment = optimisticallySaveComment(comment!, event.value);
 
           if (existingCommentReplyView != null) {
-            state.replies[existingIndex] = existingCommentReplyView.copyWith(saved: updatedCommentView.saved);
+            state.replies[existingIndex] = existingCommentReplyView.copyWith(saved: updatedComment.saved!);
           } else if (existingPersonMentionView != null) {
-            state.mentions[existingIndex] = existingPersonMentionView.copyWith(saved: updatedCommentView.saved);
+            state.mentions[existingIndex] = existingPersonMentionView.copyWith(saved: updatedComment.saved!);
           }
 
           // Immediately set the status, and continue
           emit(state.copyWith(status: InboxStatus.success));
           emit(state.copyWith(status: InboxStatus.refreshing));
 
-          await saveComment(commentView.comment.id, event.value).timeout(timeout, onTimeout: () {
+          await saveComment(comment.id, event.value).timeout(timeout, onTimeout: () {
             // Restore the original comment if saving fails
             if (existingCommentReplyView != null) {
               state.replies[existingIndex] = existingCommentReplyView;
@@ -417,19 +413,23 @@ class InboxBloc extends Bloc<InboxEvent, InboxState> {
         }
       case CommentAction.delete:
         try {
-          CommentView updatedCommentView = optimisticallyDeleteComment(commentView!, event.value);
+          ThunderComment updatedComment = optimisticallyDeleteComment(comment!, event.value);
 
           if (existingCommentReplyView != null) {
-            state.replies[existingIndex] = existingCommentReplyView.copyWith(comment: updatedCommentView.comment);
+            state.replies[existingIndex] = existingCommentReplyView.copyWith(
+              comment: existingCommentReplyView.comment.copyWith(deleted: updatedComment.deleted),
+            );
           } else if (existingPersonMentionView != null) {
-            state.mentions[existingIndex] = existingPersonMentionView.copyWith(comment: updatedCommentView.comment);
+            state.mentions[existingIndex] = existingPersonMentionView.copyWith(
+              comment: existingPersonMentionView.comment.copyWith(deleted: updatedComment.deleted),
+            );
           }
 
           // Immediately set the status, and continue
           emit(state.copyWith(status: InboxStatus.success));
           emit(state.copyWith(status: InboxStatus.refreshing));
 
-          await deleteComment(commentView.comment.id, event.value).timeout(timeout, onTimeout: () {
+          await deleteComment(comment.id, event.value).timeout(timeout, onTimeout: () {
             // Restore the original comment if deleting fails
             if (existingCommentReplyView != null) {
               state.replies[existingIndex] = existingCommentReplyView;

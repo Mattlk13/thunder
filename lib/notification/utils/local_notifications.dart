@@ -9,14 +9,16 @@ import 'package:flutter/material.dart';
 import 'package:background_fetch/background_fetch.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:html/parser.dart';
-import 'package:lemmy_api_client/v3.dart';
+import 'package:lemmy_api_client/v3.dart' hide CommentSortType;
 import 'package:markdown/markdown.dart';
 
 // Project imports
 import 'package:thunder/account/account.dart';
 import 'package:thunder/comment/comment.dart';
+import 'package:thunder/core/enums/comment_sort_type.dart';
 import 'package:thunder/core/enums/full_name.dart';
 import 'package:thunder/core/enums/local_settings.dart';
+import 'package:thunder/core/extensions/comment_reply_view.dart';
 import 'package:thunder/core/singletons/lemmy_client.dart';
 import 'package:thunder/core/singletons/preferences.dart';
 import 'package:thunder/main.dart';
@@ -73,7 +75,7 @@ Future<void> pollRepliesAndShowNotifications() async {
         auth: account.jwt!,
         unreadOnly: true,
         limit: 50, // Max allowed by API
-        sort: CommentSortType.old,
+        sort: CommentSortType.old.toLemmyType(),
         page: 1,
       ),
     );
@@ -98,8 +100,10 @@ Future<void> pollRepliesAndShowNotifications() async {
     Account account = entry.key;
     List<CommentReplyView> replies = entry.value;
 
-    for (CommentReplyView commentReplyView in replies) {
-      final String commentContent = cleanCommentContent(commentReplyView.comment);
+    for (final commentReplyView in replies) {
+      final comment = commentReplyView.toComment();
+
+      final String commentContent = cleanCommentContent(comment);
       final String htmlComment = cleanImagesFromHtml(markdownToHtml(commentContent));
       final String plaintextComment = parse(parse(htmlComment).body?.text).documentElement?.text ?? commentContent;
 

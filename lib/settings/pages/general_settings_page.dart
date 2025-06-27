@@ -1,22 +1,25 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
-import 'package:lemmy_api_client/v3.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:android_intent_plus/android_intent.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:flutter/foundation.dart';
+import 'package:unifiedpush/unifiedpush.dart';
+import 'package:version/version.dart';
+
+import 'package:thunder/core/enums/comment_sort_type.dart';
 import 'package:thunder/localizations/app_localizations.dart';
 import 'package:thunder/account/account.dart';
 import 'package:thunder/core/database/database.dart' hide Account;
 import 'package:thunder/core/enums/browser_mode.dart';
 import 'package:thunder/core/enums/enums.dart';
 import 'package:thunder/core/enums/image_caching_mode.dart';
-
+import 'package:thunder/core/enums/post_sort_type.dart';
 import 'package:thunder/core/enums/local_settings.dart';
 import 'package:thunder/notification/enums/notification_type.dart';
 import 'package:thunder/core/singletons/lemmy_client.dart';
@@ -38,8 +41,6 @@ import 'package:thunder/utils/global_context.dart';
 import 'package:thunder/utils/language/language.dart';
 import 'package:thunder/utils/links.dart';
 import 'package:thunder/utils/navigation.dart';
-import 'package:unifiedpush/unifiedpush.dart';
-import 'package:version/version.dart';
 
 class GeneralSettingsPage extends StatefulWidget {
   final LocalSettings? settingToHighlight;
@@ -126,7 +127,7 @@ class _GeneralSettingsPageState extends State<GeneralSettingsPage> with SingleTi
   /// Whether or not to show navigation labels
   bool showNavigationLabels = true;
 
-  SortType defaultSortType = DEFAULT_SORT_TYPE;
+  PostSortType defaultPostSortType = DEFAULT_POST_SORT_TYPE;
 
   GlobalKey settingToHighlightKey = GlobalKey();
   LocalSettings? settingToHighlight;
@@ -157,9 +158,9 @@ class _GeneralSettingsPageState extends State<GeneralSettingsPage> with SingleTi
         await prefs.setString(LocalSettings.defaultFeedListType.name, value);
         setState(() => defaultFeedListType = FeedListType.values.byName(value ?? DEFAULT_LISTING_TYPE.name));
         break;
-      case LocalSettings.defaultFeedSortType:
-        await prefs.setString(LocalSettings.defaultFeedSortType.name, value);
-        setState(() => defaultSortType = SortType.values.byName(value ?? DEFAULT_SORT_TYPE.name));
+      case LocalSettings.defaultFeedPostSortType:
+        await prefs.setString(LocalSettings.defaultFeedPostSortType.name, value);
+        setState(() => defaultPostSortType = PostSortType.values.byName(value ?? DEFAULT_POST_SORT_TYPE.name));
         break;
       case LocalSettings.defaultCommentSortType:
         await prefs.setString(LocalSettings.defaultCommentSortType.name, value);
@@ -277,10 +278,10 @@ class _GeneralSettingsPageState extends State<GeneralSettingsPage> with SingleTi
       // Default Sorts and Listing
       try {
         defaultFeedListType = FeedListType.values.byName(prefs.getString(LocalSettings.defaultFeedListType.name) ?? DEFAULT_LISTING_TYPE.name);
-        defaultSortType = SortType.values.byName(prefs.getString(LocalSettings.defaultFeedSortType.name) ?? DEFAULT_SORT_TYPE.name);
+        defaultPostSortType = PostSortType.values.byName(prefs.getString(LocalSettings.defaultFeedPostSortType.name) ?? DEFAULT_POST_SORT_TYPE.name);
       } catch (e) {
         defaultFeedListType = FeedListType.values.byName(DEFAULT_LISTING_TYPE.name);
-        defaultSortType = SortType.values.byName(DEFAULT_SORT_TYPE.name);
+        defaultPostSortType = PostSortType.values.byName(DEFAULT_POST_SORT_TYPE.name);
       }
 
       defaultCommentSortType = CommentSortType.values.byName(prefs.getString(LocalSettings.defaultCommentSortType.name) ?? DEFAULT_COMMENT_SORT_TYPE.name);
@@ -399,10 +400,14 @@ class _GeneralSettingsPageState extends State<GeneralSettingsPage> with SingleTi
                 ),
                 ListOption(
                   description: l10n.defaultFeedSortType,
-                  value: ListPickerItem(label: defaultSortType.value, icon: Icons.local_fire_department_rounded, payload: defaultSortType),
+                  value: ListPickerItem(
+                    label: allPostSortTypeItems.firstWhere((item) => item.payload == defaultPostSortType).label,
+                    icon: Icons.local_fire_department_rounded,
+                    payload: defaultPostSortType,
+                  ),
                   options: [
-                    ...SortPicker.getDefaultSortTypeItems(minimumVersion: Version(0, 19, 0, preRelease: ["rc", "1"])),
-                    ...topSortTypeItems
+                    ...SortPicker.getDefaultPostSortTypeItems(minimumVersion: Version(0, 19, 0, preRelease: ["rc", "1"])),
+                    ...topPostSortTypeItems
                   ],
                   icon: Icons.sort_rounded,
                   onChanged: (_) async {},
@@ -411,22 +416,22 @@ class _GeneralSettingsPageState extends State<GeneralSettingsPage> with SingleTi
                     minimumVersion: Version(0, 19, 0, preRelease: ["rc", "1"]),
                     title: l10n.defaultFeedSortType,
                     onSelect: (value) async {
-                      setPreferences(LocalSettings.defaultFeedSortType, value.payload.name);
+                      setPreferences(LocalSettings.defaultFeedPostSortType, value.payload.name);
                     },
-                    previouslySelected: defaultSortType,
+                    previouslySelected: defaultPostSortType,
                   ),
                   valueDisplay: Row(
                     children: [
-                      Icon(allSortTypeItems.firstWhere((sortTypeItem) => sortTypeItem.payload == defaultSortType).icon, size: 13),
+                      Icon(allPostSortTypeItems.firstWhere((item) => item.payload == defaultPostSortType).icon, size: 13),
                       const SizedBox(width: 4),
                       Text(
-                        allSortTypeItems.firstWhere((sortTypeItem) => sortTypeItem.payload == defaultSortType).label,
+                        allPostSortTypeItems.firstWhere((item) => item.payload == defaultPostSortType).label,
                         style: theme.textTheme.titleSmall,
                       ),
                     ],
                   ),
                   highlightKey: settingToHighlightKey,
-                  setting: LocalSettings.defaultFeedSortType,
+                  setting: LocalSettings.defaultFeedPostSortType,
                   highlightedSetting: settingToHighlight,
                 ),
                 ToggleOption(
@@ -591,7 +596,7 @@ class _GeneralSettingsPageState extends State<GeneralSettingsPage> with SingleTi
           SliverToBoxAdapter(
             child: ListOption(
               description: l10n.defaultCommentSortType,
-              value: ListPickerItem(label: defaultCommentSortType.value, icon: Icons.local_fire_department_rounded, payload: defaultCommentSortType),
+              value: ListPickerItem(label: defaultCommentSortType.name, icon: Icons.local_fire_department_rounded, payload: defaultCommentSortType),
               options: CommentSortPicker.getCommentSortTypeItems(minimumVersion: Version(0, 19, 0, preRelease: ["rc", "1"])),
               icon: Icons.comment_bank_rounded,
               onChanged: (_) async {},
@@ -605,10 +610,10 @@ class _GeneralSettingsPageState extends State<GeneralSettingsPage> with SingleTi
               ),
               valueDisplay: Row(
                 children: [
-                  Icon(CommentSortPicker.getCommentSortTypeItems(minimumVersion: LemmyClient.maxVersion).firstWhere((sortTypeItem) => sortTypeItem.payload == defaultCommentSortType).icon, size: 13),
+                  Icon(CommentSortPicker.getCommentSortTypeItems(minimumVersion: LemmyClient.maxVersion).firstWhere((item) => item.payload == defaultCommentSortType).icon, size: 13),
                   const SizedBox(width: 4),
                   Text(
-                    CommentSortPicker.getCommentSortTypeItems(minimumVersion: LemmyClient.maxVersion).firstWhere((sortTypeItem) => sortTypeItem.payload == defaultCommentSortType).label,
+                    CommentSortPicker.getCommentSortTypeItems(minimumVersion: LemmyClient.maxVersion).firstWhere((item) => item.payload == defaultCommentSortType).label,
                     style: theme.textTheme.titleSmall,
                   ),
                 ],

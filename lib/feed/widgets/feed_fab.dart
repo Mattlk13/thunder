@@ -277,8 +277,8 @@ class FeedFAB extends StatelessWidget {
       isScrollControlled: true,
       builder: (builderContext) => SortPicker(
         title: l10n.sortOptions,
-        onSelect: (selected) async => context.read<FeedBloc>().add(FeedChangeSortTypeEvent(selected.payload)),
-        previouslySelected: context.read<FeedBloc>().state.sortType,
+        onSelect: (selected) async => context.read<FeedBloc>().add(FeedChangePostSortTypeEvent(selected.payload)),
+        previouslySelected: context.read<FeedBloc>().state.postSortType,
         minimumVersion: LemmyClient.instance.version,
       ),
     );

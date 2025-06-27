@@ -2,17 +2,17 @@
 
 import 'dart:ui';
 
-import 'package:lemmy_api_client/v3.dart';
-
+import 'package:thunder/core/enums/comment_sort_type.dart';
 import 'package:thunder/core/enums/enums.dart';
 import 'package:thunder/core/enums/nested_comment_indicator.dart';
+import 'package:thunder/core/enums/post_sort_type.dart';
 import 'package:thunder/post/enums/post_card_metadata_item.dart';
 
 const FeedListType DEFAULT_LISTING_TYPE = FeedListType.all;
 
-const SortType DEFAULT_SORT_TYPE = SortType.hot;
+const PostSortType DEFAULT_POST_SORT_TYPE = PostSortType.hot;
 
-const SortType DEFAULT_SEARCH_SORT_TYPE = SortType.topYear;
+const PostSortType DEFAULT_SEARCH_POST_SORT_TYPE = PostSortType.topYear;
 
 const CommentSortType DEFAULT_COMMENT_SORT_TYPE = CommentSortType.top;
 

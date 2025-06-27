@@ -6,7 +6,7 @@ final class FeedState extends Equatable {
   const FeedState({
     this.status = FeedStatus.initial,
     this.posts = const <ThunderPost>[],
-    this.commentViews = const <CommentView>[],
+    this.comments = const <ThunderComment>[],
     this.hasReachedPostsEnd = false,
     this.hasReachedCommentsEnd = false,
     this.feedType = FeedType.general,
@@ -15,7 +15,7 @@ final class FeedState extends Equatable {
     this.communityModerators = const [],
     this.fullPersonView,
     this.feedListType,
-    this.sortType,
+    this.postSortType,
     this.communityId,
     this.communityName,
     this.userId,
@@ -40,7 +40,7 @@ final class FeedState extends Equatable {
   final List<ThunderPost> posts;
 
   /// The comments to display on the feed
-  final List<CommentView> commentViews;
+  final List<ThunderComment> comments;
 
   /// Determines if we have reached the end of the feed (posts)
   final bool hasReachedPostsEnd;
@@ -55,7 +55,7 @@ final class FeedState extends Equatable {
   final FeedListType? feedListType;
 
   /// The sorting to be applied to the feed.
-  final SortType? sortType;
+  final PostSortType? postSortType;
 
   /// The community information if applicable
   final ThunderCommunity? community;
@@ -117,12 +117,12 @@ final class FeedState extends Equatable {
   FeedState copyWith({
     FeedStatus? status,
     List<ThunderPost>? posts,
-    List<CommentView>? commentViews,
+    List<ThunderComment>? comments,
     bool? hasReachedPostsEnd,
     bool? hasReachedCommentsEnd,
     FeedType? feedType,
     FeedListType? feedListType,
-    SortType? sortType,
+    PostSortType? postSortType,
     ThunderCommunity? community,
     ThunderInstance? communityInstance,
     List<ThunderUser>? communityModerators,
@@ -146,12 +146,12 @@ final class FeedState extends Equatable {
     return FeedState(
       status: status ?? this.status,
       posts: posts ?? this.posts,
-      commentViews: commentViews ?? this.commentViews,
+      comments: comments ?? this.comments,
       hasReachedPostsEnd: hasReachedPostsEnd ?? this.hasReachedPostsEnd,
       hasReachedCommentsEnd: hasReachedCommentsEnd ?? this.hasReachedCommentsEnd,
       feedType: feedType ?? this.feedType,
       feedListType: feedListType ?? this.feedListType,
-      sortType: sortType ?? this.sortType,
+      postSortType: postSortType ?? this.postSortType,
       community: community ?? this.community,
       communityInstance: communityInstance ?? this.communityInstance,
       communityModerators: communityModerators ?? this.communityModerators,
@@ -176,7 +176,7 @@ final class FeedState extends Equatable {
 
   @override
   String toString() {
-    return '''FeedState { status: $status, posts: ${posts.length}, commentViews: ${commentViews.length}, hasReachedPostsEnd: $hasReachedPostsEnd, hasReachedCommentsEnd: $hasReachedCommentsEnd }''';
+    return '''FeedState { status: $status, posts: ${posts.length}, comments: ${comments.length}, hasReachedPostsEnd: $hasReachedPostsEnd, hasReachedCommentsEnd: $hasReachedCommentsEnd }''';
   }
 
   @override
@@ -187,12 +187,12 @@ final class FeedState extends Equatable {
         communityModerators,
         fullPersonView,
         posts,
-        commentViews,
+        comments,
         hasReachedPostsEnd,
         hasReachedCommentsEnd,
         feedType,
         feedListType,
-        sortType,
+        postSortType,
         communityId,
         communityName,
         userId,

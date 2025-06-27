@@ -1,18 +1,19 @@
+import 'package:flutter/material.dart';
+
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:bloc_concurrency/bloc_concurrency.dart';
-import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:lemmy_api_client/v3.dart';
-
 import 'package:stream_transform/stream_transform.dart';
+
 import 'package:thunder/core/enums/action_color.dart';
 import 'package:thunder/core/enums/browser_mode.dart';
-
+import 'package:thunder/core/enums/comment_sort_type.dart';
 import 'package:thunder/core/enums/custom_theme_type.dart';
 import 'package:thunder/core/enums/fab_action.dart';
 import 'package:thunder/core/enums/feed_card_divider_thickness.dart';
 import 'package:thunder/core/enums/enums.dart';
+import 'package:thunder/core/enums/post_sort_type.dart';
 import 'package:thunder/core/enums/font_scale.dart';
 import 'package:thunder/core/enums/full_name.dart';
 import 'package:thunder/core/enums/image_caching_mode.dart';
@@ -87,13 +88,13 @@ class ThunderBloc extends Bloc<ThunderEvent, ThunderState> {
       /// -------------------------- Feed Related Settings --------------------------
       // Default Listing/Sort Settings
       FeedListType defaultFeedListType = DEFAULT_LISTING_TYPE;
-      SortType defaultSortType = DEFAULT_SORT_TYPE;
+      PostSortType defaultPostSortType = DEFAULT_POST_SORT_TYPE;
       try {
         defaultFeedListType = FeedListType.values.byName(UserPreferences.getLocalSetting(LocalSettings.defaultFeedListType) ?? DEFAULT_LISTING_TYPE.name);
-        defaultSortType = SortType.values.byName(UserPreferences.getLocalSetting(LocalSettings.defaultFeedSortType) ?? DEFAULT_SORT_TYPE.name);
+        defaultPostSortType = PostSortType.values.byName(UserPreferences.getLocalSetting(LocalSettings.defaultFeedPostSortType) ?? DEFAULT_POST_SORT_TYPE.name);
       } catch (e) {
         defaultFeedListType = FeedListType.values.byName(DEFAULT_LISTING_TYPE.name);
-        defaultSortType = SortType.values.byName(DEFAULT_SORT_TYPE.name);
+        defaultPostSortType = PostSortType.values.byName(DEFAULT_POST_SORT_TYPE.name);
       }
 
       bool useProfilePictureForDrawer = UserPreferences.getLocalSetting(LocalSettings.useProfilePictureForDrawer) ?? false;
@@ -272,7 +273,7 @@ class ThunderBloc extends Bloc<ThunderEvent, ThunderState> {
         /// -------------------------- Feed Related Settings --------------------------
         // Default Listing/Sort Settings
         defaultFeedListType: defaultFeedListType,
-        defaultSortType: defaultSortType,
+        defaultPostSortType: defaultPostSortType,
         useProfilePictureForDrawer: useProfilePictureForDrawer,
 
         // NSFW Settings

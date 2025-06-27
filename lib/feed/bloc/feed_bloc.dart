@@ -6,6 +6,7 @@ import 'package:stream_transform/stream_transform.dart';
 
 import 'package:thunder/account/account.dart';
 import 'package:thunder/core/enums/enums.dart';
+import 'package:thunder/core/enums/post_sort_type.dart';
 import 'package:thunder/core/models/models.dart';
 import 'package:thunder/core/singletons/lemmy_client.dart';
 import 'package:thunder/feed/enums/feed_type_subview.dart';
@@ -44,8 +45,8 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
     );
 
     /// Handles changing the sort type of the feed
-    on<FeedChangeSortTypeEvent>(
-      _onFeedChangeSortType,
+    on<FeedChangePostSortTypeEvent>(
+      _onFeedChangePostSortType,
       transformer: restartable(),
     );
 
@@ -438,7 +439,7 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
         status: FeedStatus.fetching,
         feedType: FeedType.account,
         posts: const <ThunderPost>[],
-        commentViews: const <CommentView>[],
+        comments: const <ThunderComment>[],
         hasReachedPostsEnd: false,
         hasReachedCommentsEnd: false,
         currentPage: 1,
@@ -453,12 +454,12 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
     emit(const FeedState(
       status: FeedStatus.initial,
       posts: <ThunderPost>[],
-      commentViews: <CommentView>[],
+      comments: <ThunderComment>[],
       hasReachedPostsEnd: false,
       hasReachedCommentsEnd: false,
       feedType: FeedType.general,
       feedListType: null,
-      sortType: null,
+      postSortType: null,
       community: null,
       communityInstance: null,
       communityModerators: [],
@@ -472,11 +473,11 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
   }
 
   /// Changes the current sort type of the feed, and refreshes the feed
-  Future<void> _onFeedChangeSortType(FeedChangeSortTypeEvent event, Emitter<FeedState> emit) async {
+  Future<void> _onFeedChangePostSortType(FeedChangePostSortTypeEvent event, Emitter<FeedState> emit) async {
     add(FeedFetchedEvent(
       feedType: state.feedType,
       feedListType: state.feedListType,
-      sortType: event.sortType,
+      postSortType: event.postSortType,
       communityId: state.communityId,
       communityName: state.communityName,
       userId: state.userId,
@@ -551,7 +552,7 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
       Map<String, dynamic> feedItemResult = await fetchFeedItems(
         page: 1,
         feedListType: event.feedListType,
-        sortType: event.sortType,
+        postSortType: event.postSortType,
         communityId: event.communityId,
         communityName: event.communityName,
         userId: event.userId ?? fullPersonView?.personView.person.id,
@@ -564,7 +565,7 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
 
       // Extract information from the response
       List<ThunderPost> posts = feedItemResult['posts'];
-      List<CommentView> commentViews = feedItemResult['commentViews'];
+      List<ThunderComment> comments = feedItemResult['comments'];
       bool hasReachedPostsEnd = feedItemResult['hasReachedPostsEnd'];
       bool hasReachedCommentsEnd = feedItemResult['hasReachedCommentsEnd'];
       int currentPage = feedItemResult['currentPage'];
@@ -572,12 +573,12 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
       return emit(state.copyWith(
         status: FeedStatus.success,
         posts: posts,
-        commentViews: commentViews,
+        comments: comments,
         hasReachedPostsEnd: hasReachedPostsEnd,
         hasReachedCommentsEnd: hasReachedCommentsEnd,
         feedType: event.feedType,
         feedListType: event.feedListType,
-        sortType: event.sortType,
+        postSortType: event.postSortType,
         community: community,
         communityInstance: communityInstance,
         communityModerators: communityModerators,
@@ -599,12 +600,12 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
     emit(state.copyWith(status: FeedStatus.fetching));
 
     List<ThunderPost> posts = List.from(state.posts);
-    List<CommentView> commentViews = List.from(state.commentViews);
+    List<ThunderComment> comments = List.from(state.comments);
 
     Map<String, dynamic> feedItemResult = await fetchFeedItems(
       page: state.currentPage,
       feedListType: state.feedListType,
-      sortType: state.sortType,
+      postSortType: state.postSortType,
       communityId: state.communityId,
       communityName: state.communityName,
       userId: state.userId,
@@ -616,7 +617,7 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
 
     // Extract information from the response
     List<ThunderPost> newPosts = feedItemResult['posts'];
-    List<CommentView> newCommentViews = feedItemResult['commentViews'];
+    List<ThunderComment> newComments = feedItemResult['comments'];
     bool hasReachedPostsEnd = feedItemResult['hasReachedPostsEnd'];
     bool hasReachedCommentsEnd = feedItemResult['hasReachedCommentsEnd'];
     int currentPage = feedItemResult['currentPage'];
@@ -634,13 +635,13 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
     }
 
     posts.addAll(filteredPosts);
-    commentViews.addAll(newCommentViews);
+    comments.addAll(newComments);
 
     return emit(state.copyWith(
       status: FeedStatus.success,
       insertedPostIds: newInsertedPostIds.toList(),
       posts: posts,
-      commentViews: commentViews,
+      comments: comments,
       hasReachedPostsEnd: hasReachedPostsEnd,
       hasReachedCommentsEnd: hasReachedCommentsEnd,
       currentPage: currentPage,
