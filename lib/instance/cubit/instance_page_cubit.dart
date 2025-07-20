@@ -2,11 +2,15 @@ import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:lemmy_api_client/v3.dart';
 
-import 'package:thunder/account/account.dart';
+import 'package:thunder/account/models/account.dart';
+import 'package:thunder/comment/models/thunder_comment.dart';
+import 'package:thunder/community/models/thunder_community.dart';
+import 'package:thunder/core/enums/enums.dart';
+import 'package:thunder/core/enums/meta_search_type.dart';
 import 'package:thunder/core/enums/post_sort_type.dart';
-import 'package:thunder/core/models/models.dart';
-import 'package:thunder/core/singletons/lemmy_client.dart';
+import 'package:thunder/post/models/thunder_post.dart';
 import 'package:thunder/post/utils/post.dart';
+import 'package:thunder/search/repository/search_repository.dart';
 import 'package:thunder/utils/error_messages.dart';
 
 part 'instance_page_state.dart';
@@ -14,34 +18,32 @@ part 'instance_page_state.dart';
 class InstancePageCubit extends Cubit<InstancePageState> {
   static const int _pageLimit = 15;
 
+  Account account;
+
+  late SearchRepository searchRepository;
   final String instance;
 
-  InstancePageCubit({required this.instance, required String resolutionInstance})
-      : super(InstancePageState(
-          status: InstancePageStatus.success,
-          resolutionInstance: resolutionInstance,
-        ));
+  InstancePageCubit({required this.instance, required String resolutionInstance, required this.account})
+      : super(InstancePageState(status: InstancePageStatus.success, resolutionInstance: resolutionInstance)) {
+    searchRepository = LemmySearchRepository(account: account);
+  }
 
   Future<void> loadCommunities({int? page, required PostSortType postSortType}) async {
     if (page == 1) emit(state.copyWith(status: InstancePageStatus.loading));
 
     try {
-      final account = await fetchActiveProfile();
-      LemmyApiV3 lemmy = (LemmyClient()..changeBaseUrl(instance)).lemmyApiV3;
-
-      SearchResponse searchResponse = await lemmy.run(Search(
-        auth: account.jwt,
-        q: '',
-        page: page ?? 1,
+      final searchResponse = await searchRepository.search(
+        query: '',
+        type: MetaSearchType.communities,
+        sort: postSortType,
+        listingType: FeedListType.local,
         limit: _pageLimit,
-        sort: postSortType.toLemmyType(),
-        listingType: ListingType.local,
-        type: SearchType.communities,
-      ));
+        page: page ?? 1,
+      );
 
       emit(state.copyWith(
         status: searchResponse.communities.isEmpty || searchResponse.communities.length < _pageLimit ? InstancePageStatus.done : InstancePageStatus.success,
-        communities: [...(state.communities ?? []), ...searchResponse.communities.map((cv) => ThunderCommunity(cv.community, communityView: cv))],
+        communities: [...(state.communities ?? []), ...searchResponse.communities.map((cv) => ThunderCommunity.fromLemmyCommunityView(cv.toJson()))],
         page: page ?? 1,
       ));
     } catch (e) {
@@ -53,18 +55,14 @@ class InstancePageCubit extends Cubit<InstancePageState> {
     if (page == 1) emit(state.copyWith(status: InstancePageStatus.loading));
 
     try {
-      final account = await fetchActiveProfile();
-      LemmyApiV3 lemmy = (LemmyClient()..changeBaseUrl(instance)).lemmyApiV3;
-
-      SearchResponse searchResponse = await lemmy.run(Search(
-        auth: account.jwt,
-        q: '',
-        page: page ?? 1,
+      final searchResponse = await searchRepository.search(
+        query: '',
+        type: MetaSearchType.users,
+        sort: postSortType,
+        listingType: FeedListType.local,
         limit: _pageLimit,
-        sort: postSortType.toLemmyType(),
-        listingType: ListingType.local,
-        type: SearchType.users,
-      ));
+        page: page ?? 1,
+      );
 
       emit(state.copyWith(
         status: searchResponse.users.isEmpty || searchResponse.users.length < _pageLimit ? InstancePageStatus.done : InstancePageStatus.success,
@@ -80,18 +78,14 @@ class InstancePageCubit extends Cubit<InstancePageState> {
     if (page == 1) emit(state.copyWith(status: InstancePageStatus.loading));
 
     try {
-      final account = await fetchActiveProfile();
-      LemmyApiV3 lemmy = (LemmyClient()..changeBaseUrl(instance)).lemmyApiV3;
-
-      SearchResponse searchResponse = await lemmy.run(Search(
-        auth: account.jwt,
-        q: '',
-        page: page ?? 1,
+      final searchResponse = await searchRepository.search(
+        query: '',
+        type: MetaSearchType.posts,
+        sort: postSortType,
+        listingType: FeedListType.local,
         limit: _pageLimit,
-        sort: postSortType.toLemmyType(),
-        listingType: ListingType.local,
-        type: SearchType.posts,
-      ));
+        page: page ?? 1,
+      );
 
       emit(state.copyWith(
         status: searchResponse.posts.isEmpty || searchResponse.posts.length < _pageLimit ? InstancePageStatus.done : InstancePageStatus.success,
@@ -107,26 +101,25 @@ class InstancePageCubit extends Cubit<InstancePageState> {
     if (page == 1) emit(state.copyWith(status: InstancePageStatus.loading));
 
     try {
-      final account = await fetchActiveProfile();
-      LemmyApiV3 lemmy = (LemmyClient()..changeBaseUrl(instance)).lemmyApiV3;
-
-      SearchResponse searchResponse = await lemmy.run(Search(
-        auth: account.jwt,
-        q: '',
-        page: page ?? 1,
+      final searchResponse = await searchRepository.search(
+        query: '',
+        type: MetaSearchType.comments,
+        sort: postSortType,
+        listingType: FeedListType.local,
         limit: _pageLimit,
-        sort: postSortType.toLemmyType(),
-        listingType: ListingType.local,
-        type: SearchType.comments,
-      ));
+        page: page ?? 1,
+      );
 
-      List<ThunderComment> comments = [...(state.comments ?? []), ...searchResponse.comments.map((cv) => ThunderComment(comment: cv.comment, commentView: cv))];
+      List<ThunderComment> comments = [...(state.comments ?? []), ...searchResponse.comments.map((cv) => ThunderComment.fromLemmyCommentView(cv.toJson()))];
       List<ThunderComment> commentsFinal = [];
-      final LemmyApiV3 resolutionLemmy = (LemmyClient()..changeBaseUrl(state.resolutionInstance)).lemmyApiV3;
+
+      // Create a temporary Account object to use for the request
+      final account = Account(id: '', instance: state.resolutionInstance, index: -1);
+
       for (final comment in comments) {
         try {
-          final resolveObjectResponse = await resolutionLemmy.run(ResolveObject(q: comment.url));
-          final resolvedComment = ThunderComment(comment: resolveObjectResponse.comment!.comment, commentView: resolveObjectResponse.comment!);
+          final resolveObjectResponse = await LemmySearchRepository(account: account).resolve(query: comment.apId);
+          final resolvedComment = ThunderComment.fromLemmyCommentView(resolveObjectResponse.comment!.toJson());
           commentsFinal.add(resolvedComment);
         } catch (e) {
           // If we can't resolve it, we won't even add it

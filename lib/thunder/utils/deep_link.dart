@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 
-import 'package:lemmy_api_client/v3.dart' hide ModlogActionType;
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:thunder/account/account.dart';
 
-import 'package:thunder/account/utils/profiles.dart';
+import 'package:thunder/comment/repository/comment_repository.dart';
 import 'package:thunder/core/enums/local_settings.dart';
-import 'package:thunder/core/models/models.dart';
-import 'package:thunder/core/singletons/lemmy_client.dart';
 import 'package:thunder/feed/view/feed_page.dart';
+import 'package:thunder/instance/repository/instance_repository.dart';
 import 'package:thunder/modlog/modlog.dart';
-import 'package:thunder/post/utils/post.dart';
+import 'package:thunder/post/repository/post_repository.dart';
 import 'package:thunder/shared/snackbar.dart';
 import 'package:thunder/thunder/enums/deep_link_enums.dart';
 import 'package:thunder/utils/global_context.dart';
@@ -86,7 +86,7 @@ Future<void> handleDeepLinkNavigation(BuildContext context, {required LinkType l
       throw DeepLinkException(GlobalContext.l10n.invalidUrl, type: DeepLinkErrorType.invalidUrl);
     }
 
-    await _initializeLemmyClient();
+    await _initializeLemmyClient(context);
 
     final normalizedLink = _normalizeLink(link);
     if (normalizedLink.isEmpty) {
@@ -116,7 +116,7 @@ Future<void> handleDeepLinkNavigation(BuildContext context, {required LinkType l
 }
 
 /// Initializes the client with the currently active profile. Includes retry logic and validation.
-Future<void> _initializeLemmyClient() async {
+Future<void> _initializeLemmyClient(BuildContext context) async {
   int maxRetries = 2;
   int attempts = 0;
 
@@ -127,11 +127,8 @@ Future<void> _initializeLemmyClient() async {
         throw DeepLinkException(GlobalContext.l10n.errorNoActiveInstance, type: DeepLinkErrorType.initialization);
       }
 
-      final instance = account.instance.replaceAll('https://', '');
-      LemmyClient.instance.changeBaseUrl(instance);
-
       // Validate connection by making a simple request
-      await LemmyClient.instance.lemmyApiV3.run(GetSite());
+      await LemmyInstanceRepository(account: account).getSiteInfo();
       return;
     } catch (e) {
       attempts++;
@@ -233,13 +230,12 @@ Future<DeepLinkResult> _navigateToPost(BuildContext context, String link) async 
   }
 
   try {
-    final lemmy = LemmyClient.instance.lemmyApiV3;
-    final account = await fetchActiveProfile();
-    final response = await lemmy.run(GetPost(id: postId, auth: account.jwt));
+    final account = context.read<ProfileBloc>().state.account;
+    final post = await LemmyPostRepository(account: account).getPost(postId);
 
     if (!context.mounted) return DeepLinkResult.failure(GlobalContext.l10n.unexpectedError);
 
-    navigateToPost(context, post: (await parsePosts([response.postView])).first);
+    navigateToPost(context, post: post?['post']);
     return DeepLinkResult.successful();
   } catch (e) {
     throw DeepLinkException(GlobalContext.l10n.exceptionProcessingUri, url: link, type: DeepLinkErrorType.entityResolution);
@@ -273,8 +269,6 @@ Future<DeepLinkResult> _navigateToModlog(BuildContext context, String link) asyn
       throw DeepLinkException(GlobalContext.l10n.invalidUrl, url: link, type: DeepLinkErrorType.invalidUrl);
     }
 
-    final lemmyClient = LemmyClient()..changeBaseUrl(uri.host);
-
     ModlogActionType actionType;
     try {
       actionType = ModlogActionType.values.firstWhere(
@@ -295,8 +289,7 @@ Future<DeepLinkResult> _navigateToModlog(BuildContext context, String link) asyn
       communityId: communityId,
       userId: userId,
       moderatorId: moderatorId,
-      lemmyClient: lemmyClient,
-      subtitle: lemmyClient.lemmyApiV3.host,
+      subtitle: uri.host,
     );
 
     return DeepLinkResult.successful();
@@ -316,14 +309,9 @@ Future<DeepLinkResult> _navigateToComment(BuildContext context, String link) asy
   }
 
   try {
-    final lemmy = LemmyClient.instance.lemmyApiV3;
-    final account = await fetchActiveProfile();
-    final response = await lemmy.run(GetComment(id: commentId, auth: account.jwt));
-
-    // Check context.mounted after long-running API operations
     if (!context.mounted) return DeepLinkResult.failure(GlobalContext.l10n.unexpectedError);
-
-    final comment = ThunderComment(comment: response.commentView.comment, commentView: response.commentView);
+    final account = context.read<ProfileBloc>().state.account;
+    final comment = await LemmyCommentRepository(account: account).getComment(commentId);
 
     navigateToComment(context, comment);
     return DeepLinkResult.successful();

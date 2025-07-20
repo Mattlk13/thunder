@@ -3,8 +3,8 @@ import 'package:equatable/equatable.dart';
 import 'package:lemmy_api_client/pictrs.dart';
 
 import 'package:thunder/account/account.dart';
-import 'package:thunder/comment/comment.dart';
-import 'package:thunder/core/models/models.dart';
+import 'package:thunder/comment/models/thunder_comment.dart';
+import 'package:thunder/comment/repository/comment_repository.dart';
 import 'package:thunder/localizations/app_localizations.dart';
 import 'package:thunder/utils/error_messages.dart';
 import 'package:thunder/utils/global_context.dart';
@@ -12,7 +12,13 @@ import 'package:thunder/utils/global_context.dart';
 part 'create_comment_state.dart';
 
 class CreateCommentCubit extends Cubit<CreateCommentState> {
-  CreateCommentCubit() : super(const CreateCommentState(status: CreateCommentStatus.initial));
+  Account account;
+
+  late CommentRepository repository;
+
+  CreateCommentCubit({required this.account}) : super(const CreateCommentState(status: CreateCommentStatus.initial)) {
+    repository = LemmyCommentRepository(account: account);
+  }
 
   Future<void> clearMessage() async {
     emit(state.copyWith(status: CreateCommentStatus.initial, message: null));
@@ -56,9 +62,9 @@ class CreateCommentCubit extends Cubit<CreateCommentState> {
       ThunderComment comment;
 
       if (commentIdBeingEdited != null) {
-        comment = await editComment(commentIdBeingEdited, content, languageId);
+        comment = await repository.edit(commentId: commentIdBeingEdited, content: content, languageId: languageId);
       } else {
-        comment = await createComment(postId!, content, parentCommentId, languageId);
+        comment = await repository.create(postId: postId!, content: content, parentId: parentCommentId, languageId: languageId);
       }
 
       emit(state.copyWith(status: CreateCommentStatus.success, comment: comment));

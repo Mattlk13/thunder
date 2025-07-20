@@ -1,20 +1,24 @@
+import 'package:flutter/foundation.dart';
+
 import 'package:bloc/bloc.dart';
 import 'package:bloc_concurrency/bloc_concurrency.dart';
 import 'package:collection/collection.dart';
 import 'package:equatable/equatable.dart';
-import 'package:flutter/foundation.dart';
 import 'package:lemmy_api_client/v3.dart';
 import 'package:stream_transform/stream_transform.dart';
 
 import 'package:thunder/account/models/account.dart';
+import 'package:thunder/account/repository/account_repository.dart';
 import 'package:thunder/account/utils/profiles.dart';
 import 'package:thunder/community/models/favourite.dart';
-import 'package:thunder/core/enums/enums.dart';
+import 'package:thunder/community/models/thunder_community.dart';
 import 'package:thunder/core/enums/post_sort_type.dart';
-import 'package:thunder/core/models/models.dart';
-import 'package:thunder/core/singletons/lemmy_client.dart';
+import 'package:thunder/core/models/thunder_site_response.dart';
 import 'package:thunder/core/singletons/preferences.dart';
+import 'package:thunder/instance/repository/instance_repository.dart';
 import 'package:thunder/localizations/app_localizations.dart';
+import 'package:thunder/user/models/thunder_user.dart';
+import 'package:thunder/user/repository/user_repository.dart';
 import 'package:thunder/utils/error_messages.dart';
 import 'package:thunder/utils/global_context.dart';
 
@@ -30,9 +34,15 @@ EventTransformer<E> throttleDroppable<E>(Duration duration) {
 }
 
 class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
-  ProfileBloc() : super(const ProfileState()) {
+  Account account;
+
+  InstanceRepository? instanceRepository;
+  AccountRepository? accountRepository;
+  UserRepository? userRepository;
+
+  ProfileBloc({required this.account}) : super(ProfileState(account: account)) {
     // This event should be triggered during the start of the app, or when there is a change in the active account
-    on<InitializeAuth>(_initializeAuth, transformer: throttleDroppable(throttleDuration));
+    on<InitializeAuth>(_initializeAuth, transformer: restartable());
 
     /// This event should be triggered whenever the user removes a profile
     /// This could be either a log out event, or a removal of a profile
@@ -65,28 +75,25 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
 
   /// Resets the entire state the the initial state.
   Future<void> _resetState(Emitter<ProfileState> emit) async {
-    return emit(ProfileState());
+    return emit(ProfileState(account: account));
   }
 
   Future<void> _initializeAuth(InitializeAuth event, Emitter<ProfileState> emit) async {
-    _resetState(emit);
-
     // Check to see what the current active profile is.
     final account = await fetchActiveProfile();
 
-    // Set lemmy client to use the instance
-    LemmyClient.instance.changeBaseUrl(account.instance.replaceAll('https://', ''));
+    // Initialize the repositories with the current account
+    instanceRepository = LemmyInstanceRepository(account: account);
+    accountRepository = LemmyAccountRepository(account: account);
+    userRepository = LemmyUserRepository(account: account);
 
     // Check to see the instance settings (for checking if downvotes are enabled)
-    final lemmy = LemmyClient.instance.lemmyApiV3;
-
     bool downvotesEnabled = true;
-    GetSiteResponse? getSiteResponse;
+    ThunderSiteResponse? siteResponse;
 
     try {
-      getSiteResponse = await lemmy.run(GetSite(auth: account.jwt)).timeout(const Duration(seconds: 15));
-
-      downvotesEnabled = getSiteResponse.siteView.localSite.enableDownvotes;
+      siteResponse = await instanceRepository!.getSiteInfo().timeout(const Duration(seconds: 15));
+      downvotesEnabled = siteResponse.siteView.enableDownvotes ?? true;
     } catch (e) {
       return emit(state.copyWith(status: ProfileStatus.failureCheckingInstance, error: () => getExceptionErrorMessage(e)));
     }
@@ -94,10 +101,10 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
     emit(
       state.copyWith(
         status: ProfileStatus.success,
-        account: account.anonymous ? null : () => account,
+        account: () => account,
         isLoggedIn: !account.anonymous,
         downvotesEnabled: downvotesEnabled,
-        getSiteResponse: () => getSiteResponse!,
+        siteResponse: () => siteResponse!,
       ),
     );
 
@@ -110,37 +117,31 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
   }
 
   Future<void> _addProfile(AddProfile event, Emitter<ProfileState> emit) async {
-    final originalBaseUrl = LemmyClient.instance.lemmyApiV3.host;
-
     try {
       emit(state.copyWith(status: ProfileStatus.loading));
 
-      String instance = event.instance.replaceAll('https://', '');
-      LemmyClient.instance.changeBaseUrl(instance);
+      // Create a temporary Account to attempt to log in
+      Account tempAccount = Account(id: '', index: -1, instance: event.instance.replaceAll('https://', ''));
 
-      final lemmy = LemmyClient.instance.lemmyApiV3;
-
-      final response = await lemmy.run(Login(
-        usernameOrEmail: event.username,
-        password: event.password,
-        totp2faToken: event.totp,
-      ));
-
+      // Create a temporary account repository to use for the login
+      final response = await LemmyAccountRepository(account: tempAccount).login(username: event.username, password: event.password, totp: event.totp);
       if (response.jwt == null) return emit(state.copyWith(status: ProfileStatus.failure));
 
-      GetSiteResponse getSiteResponse = await lemmy.run(GetSite(auth: response.jwt));
+      // Create a temporary instance repository to use for the site information
+      tempAccount = Account(id: '', index: -1, jwt: response.jwt!, instance: tempAccount.instance);
+      final siteResponse = await LemmyInstanceRepository(account: tempAccount).getSiteInfo();
 
-      if (event.showContentWarning && getSiteResponse.siteView.site.contentWarning?.isNotEmpty == true) {
-        return emit(state.copyWith(status: ProfileStatus.contentWarning, contentWarning: () => getSiteResponse.siteView.site.contentWarning!));
+      if (event.showContentWarning && siteResponse.siteView.contentWarning?.isNotEmpty == true) {
+        return emit(state.copyWith(status: ProfileStatus.contentWarning, contentWarning: () => siteResponse.siteView.contentWarning!));
       }
 
       // Create a new account in the database
       Account? account = Account(
         id: '',
-        username: getSiteResponse.myUser?.localUserView.person.name,
+        username: siteResponse.myUser?.localUserView.person.name,
         jwt: response.jwt,
-        instance: instance,
-        userId: getSiteResponse.myUser?.localUserView.person.id,
+        instance: tempAccount.instance,
+        userId: siteResponse.myUser?.localUserView.person.id,
         index: -1,
       );
 
@@ -156,12 +157,6 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
     } on LemmyApiException catch (e) {
       return emit(state.copyWith(status: ProfileStatus.failure, error: () => e.toString()));
     } catch (e) {
-      try {
-        LemmyClient.instance.changeBaseUrl(originalBaseUrl);
-      } catch (e, s) {
-        return emit(state.copyWith(status: ProfileStatus.failure, error: () => s.toString()));
-      }
-
       return emit(state.copyWith(status: ProfileStatus.failure, error: () => e.toString()));
     }
   }
@@ -238,10 +233,9 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
     try {
       emit(state.copyWith(status: ProfileStatus.loading, user: null, moderates: [], reload: event.reload));
 
-      final lemmy = LemmyClient.instance.lemmyApiV3;
-      final response = await lemmy.run(GetPersonDetails(username: account.username, auth: account.jwt, sort: PostSortType.new_.toLemmyType(), page: 1));
-      final user = ThunderUser(response.personView.person, userView: response.personView);
-      final moderates = response.moderates.map((cmv) => ThunderCommunity(cmv.community)).toList();
+      final response = await userRepository!.getUser(username: account.username, sort: PostSortType.new_, page: 1);
+      final user = ThunderUser.fromLemmyUserView(response!.personView.toJson());
+      final moderates = response.moderates.map((cmv) => ThunderCommunity.fromLemmyCommunity(cmv.community.toJson())).toList();
 
       // This eliminates an issue which has plagued me a lot which is that there's a race condition
       // with so many calls to GetAccountInformation, we can return success for the new and old account.
@@ -264,10 +258,9 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
       emit(state.copyWith(status: ProfileStatus.loading));
 
       // Refresh the site information, which includes the user's settings
-      final lemmy = LemmyClient.instance.lemmyApiV3;
-      final response = await lemmy.run(GetSite(auth: account.jwt));
+      final response = await instanceRepository!.getSiteInfo();
 
-      return emit(state.copyWith(status: ProfileStatus.success, getSiteResponse: () => response));
+      return emit(state.copyWith(status: ProfileStatus.success, siteResponse: () => response));
     } catch (e) {
       emit(state.copyWith(status: ProfileStatus.failure, error: () => getExceptionErrorMessage(e), reload: event.reload));
     }
@@ -281,18 +274,17 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
     try {
       emit(state.copyWith(status: ProfileStatus.loading, reload: event.reload));
 
-      final lemmy = LemmyClient.instance.lemmyApiV3;
       List<ThunderCommunity> subscriptions = [];
 
       int page = 1;
       bool hasFetchedAllSubscriptions = false;
 
       while (!hasFetchedAllSubscriptions) {
-        final response = await lemmy.run(ListCommunities(auth: account.jwt, page: page, limit: 50, type: FeedListType.subscribed.toLemmyType()));
-        subscriptions.addAll(response.communities.map((cv) => ThunderCommunity(cv.community, communityView: cv)));
+        final response = await accountRepository!.subscriptions(page: page, limit: 50);
+        subscriptions.addAll(response);
 
         page++;
-        hasFetchedAllSubscriptions = response.communities.isEmpty;
+        hasFetchedAllSubscriptions = response.isEmpty;
       }
 
       // Sort subscriptions by their name

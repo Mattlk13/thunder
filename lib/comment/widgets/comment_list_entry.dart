@@ -6,7 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 // Project imports
 import 'package:thunder/account/account.dart';
-import 'package:thunder/core/models/models.dart';
+import 'package:thunder/comment/models/thunder_comment.dart';
 import 'package:thunder/utils/navigation.dart';
 import 'package:thunder/post/bloc/post_bloc.dart' as post_bloc;
 import 'package:thunder/shared/comment_reference.dart';
@@ -22,10 +22,11 @@ class CommentListEntry extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     assert(comment.creator != null, 'Comment must have a creator');
-    final bool isOwnComment = comment.creator!.id == context.read<ProfileBloc>().state.account?.userId;
+    final bool isOwnComment = comment.creator!.id == context.read<ProfileBloc>().state.account.userId;
+    final account = context.select<ProfileBloc, Account>((bloc) => bloc.state.account);
 
     return BlocProvider<post_bloc.PostBloc>(
-      create: (BuildContext context) => post_bloc.PostBloc(),
+      create: (BuildContext context) => post_bloc.PostBloc(account: account),
       child: CommentReference(
         comment: comment,
         onVoteAction: (int commentId, int voteType) => onVoteAction?.call(commentId, voteType),

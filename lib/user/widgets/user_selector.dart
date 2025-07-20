@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:lemmy_api_client/v3.dart';
-import 'package:thunder/localizations/app_localizations.dart';
 
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:thunder/comment/models/thunder_comment.dart';
+import 'package:thunder/community/models/thunder_community.dart';
+
+import 'package:thunder/localizations/app_localizations.dart';
 import 'package:thunder/account/account.dart';
-import 'package:thunder/core/models/models.dart';
+import 'package:thunder/post/models/thunder_post.dart';
 import 'package:thunder/post/utils/post.dart';
+import 'package:thunder/search/repository/search_repository.dart';
 import 'package:thunder/shared/snackbar.dart';
 import 'package:thunder/user/widgets/user_indicator.dart';
 
@@ -101,7 +104,7 @@ Future<void> temporarilySwitchAccount(
 }) async {
   final AppLocalizations l10n = AppLocalizations.of(context)!;
 
-  final Account? originalUser = context.read<ProfileBloc>().state.account;
+  final Account originalUser = context.read<ProfileBloc>().state.account;
 
   await showProfileModalSheet(
     context,
@@ -116,7 +119,7 @@ Future<void> temporarilySwitchAccount(
   if (context.mounted) {
     Account? newUser = context.read<ProfileBloc>().state.account;
 
-    if (originalUser != null && newUser != null && originalUser.id != newUser.id) {
+    if (originalUser.id != newUser.id) {
       // The user changed. Reload the widget.
       setState?.call(() {});
       onUserChanged?.call();
@@ -124,10 +127,10 @@ Future<void> temporarilySwitchAccount(
       // If there is a selected community, see if we can resolve it to the new user's instance.
       if (communityActorId?.isNotEmpty == true && onCommunityChanged != null) {
         try {
-          final response = await LemmyApiV3(newUser.instance).run(ResolveObject(q: communityActorId!));
+          final response = await LemmySearchRepository(account: newUser).resolve(query: communityActorId!);
 
           if (response.community != null) {
-            final community = ThunderCommunity(response.community!.community, communityView: response.community);
+            final community = ThunderCommunity.fromLemmyCommunityView(response.community!.toJson());
             onCommunityChanged(community);
           }
         } catch (e) {
@@ -137,41 +140,34 @@ Future<void> temporarilySwitchAccount(
 
       // If there is a selected post, see if we can resolve it to the new user's instance.
       if (postActorId?.isNotEmpty == true && onPostChanged != null) {
-        PostView? resolvedPost;
         try {
-          final ResolveObjectResponse resolveObjectResponse = await LemmyApiV3(newUser.instance).run(ResolveObject(q: postActorId!));
-          resolvedPost = resolveObjectResponse.post;
-          if (resolvedPost != null) {
-            onPostChanged((await parsePosts([resolvedPost])).first);
+          final response = await LemmySearchRepository(account: newUser).resolve(query: postActorId!);
+
+          if (response.post != null) {
+            onPostChanged((await parsePosts([response.post!])).first);
           }
-        } catch (e) {
-          // We will handle this below.
-        }
-        if (resolvedPost == null) {
-          // This is not allowed, so we must block the account switch.
+
           showSnackbar(l10n.accountSwitchPostNotFound(newUser.instance));
           if (context.mounted) context.read<ProfileBloc>().add(SwitchProfile(accountId: originalUser.id, reload: false));
+        } catch (e) {
+          // We will handle this below.
         }
       }
 
       // If there is a selected parent comment, see if we can resolve it to the new user's instance.
       if (parentCommentActorId?.isNotEmpty == true && onParentCommentChanged != null) {
-        CommentView? resolvedComment;
         try {
-          final ResolveObjectResponse resolveObjectResponse = await LemmyApiV3(newUser.instance).run(ResolveObject(q: parentCommentActorId!));
-          resolvedComment = resolveObjectResponse.comment;
+          final response = await LemmySearchRepository(account: newUser).resolve(query: parentCommentActorId!);
 
-          if (resolvedComment != null) {
-            final comment = ThunderComment(comment: resolvedComment.comment, commentView: resolvedComment);
+          if (response.comment != null) {
+            final comment = ThunderComment.fromLemmyCommentView(response.comment!.toJson());
             onParentCommentChanged(comment);
           }
-        } catch (e) {
-          // We will handle this below.
-        }
-        if (resolvedComment == null) {
-          // This is not allowed, so we must block the accout switch.
+
           showSnackbar(l10n.accountSwitchParentCommentNotFound(newUser.instance));
           if (context.mounted) context.read<ProfileBloc>().add(SwitchProfile(accountId: originalUser.id, reload: false));
+        } catch (e) {
+          // We will handle this below.
         }
       }
     }

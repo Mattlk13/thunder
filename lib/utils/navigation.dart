@@ -8,8 +8,12 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lemmy_api_client/v3.dart' hide ModlogActionType, CommentSortType;
 import 'package:swipeable_page_route/swipeable_page_route.dart';
 
+import 'package:thunder/comment/models/thunder_comment.dart';
+import 'package:thunder/community/models/thunder_community.dart';
 import 'package:thunder/core/enums/comment_sort_type.dart';
 import 'package:thunder/core/enums/full_name.dart';
+import 'package:thunder/core/models/thunder_site_response.dart';
+import 'package:thunder/instance/repository/instance_repository.dart';
 import 'package:thunder/localizations/app_localizations.dart';
 import 'package:thunder/account/account.dart';
 import 'package:thunder/comment/comment.dart';
@@ -19,8 +23,6 @@ import 'package:thunder/community/pages/create_post_page.dart';
 import 'package:thunder/core/enums/enums.dart';
 import 'package:thunder/core/enums/local_settings.dart';
 import 'package:thunder/core/enums/post_sort_type.dart';
-import 'package:thunder/core/models/models.dart';
-import 'package:thunder/core/singletons/lemmy_client.dart';
 import 'package:thunder/feed/bloc/feed_bloc.dart';
 import 'package:thunder/feed/view/feed_page.dart';
 import 'package:thunder/inbox/bloc/inbox_bloc.dart';
@@ -29,11 +31,13 @@ import 'package:thunder/instance/bloc/instance_bloc.dart';
 import 'package:thunder/instance/pages/instance_page.dart';
 import 'package:thunder/moderator/view/report_page.dart';
 import 'package:thunder/modlog/modlog.dart';
+import 'package:thunder/notification/repository/notification_repository.dart';
 import 'package:thunder/post/bloc/post_bloc.dart';
 import 'package:thunder/post/cubit/create_post_cubit.dart';
 import 'package:thunder/post/enums/post_action.dart';
+import 'package:thunder/post/models/thunder_post.dart';
 import 'package:thunder/post/pages/post_page.dart';
-import 'package:thunder/post/utils/post.dart';
+import 'package:thunder/post/repository/post_repository.dart';
 import 'package:thunder/search/bloc/search_bloc.dart';
 import 'package:thunder/search/pages/search_page.dart';
 import 'package:thunder/settings/pages/about_settings_page.dart';
@@ -88,15 +92,16 @@ Future<void> navigateToInstancePage(
   final reduceAnimations = state.reduceAnimations;
   final enableFullScreenSwipeNavigationGesture = state.enableFullScreenSwipeNavigationGesture;
 
-  GetSiteResponse? getSiteResponse;
+  ThunderSiteResponse? getSiteResponse;
   bool? isBlocked;
 
   try {
     // Get the site information by connecting to the given instance
-    getSiteResponse = await LemmyApiV3(instanceHost).run(const GetSite()).timeout(const Duration(seconds: 5));
+    final account = Account(id: '', index: -1, instance: instanceHost);
+    getSiteResponse = await LemmyInstanceRepository(account: account).getSiteInfo().timeout(const Duration(seconds: 5));
 
     // Check whether this instance is blocked (we have to get our user from our current site first).
-    isBlocked = profileBloc.state.getSiteResponse?.myUser?.instanceBlocks?.any((i) => i.instance.domain == instanceHost);
+    isBlocked = profileBloc.state.siteResponse?.myUser?.instanceBlocks.any((i) => i.instance['domain'] == instanceHost);
   } catch (e) {
     // Continue if we can't get the site
   }
@@ -155,36 +160,27 @@ Future<void> navigateToPost(
 
   ThunderPost? pvm = post;
 
+  final account = context.read<ProfileBloc>().state.account;
+
   if (pvm == null) {
-    final client = LemmyClient.instance.lemmyApiV3;
-    final account = await fetchActiveProfile();
-
-    GetPostResponse getPostResponse = await client.run(
-      GetPost(
-        auth: account.jwt,
-        id: postId,
-      ),
-    );
-
-    List<ThunderPost> posts = await parsePosts([getPostResponse.postView]);
-
-    pvm = posts.first;
+    final response = await LemmyPostRepository(account: account).getPost(postId!);
+    pvm = response?['post'];
   }
 
   // Mark post as read when tapped
   if (profileBloc.state.isLoggedIn) {
-    feedBloc?.add(FeedItemActionedEvent(postId: pvm.id, postAction: PostAction.read, value: true));
+    feedBloc?.add(FeedItemActionedEvent(postId: pvm!.id, postAction: PostAction.read, value: true));
   }
 
   final state = thunderBloc.state;
   final reduceAnimations = state.reduceAnimations;
   final enableFullScreenSwipeNavigationGesture = state.enableFullScreenSwipeNavigationGesture;
 
-  final post_bloc.PostBloc postBloc = _cachedPostBloc?.postApId == pvm.url
+  final post_bloc.PostBloc postBloc = _cachedPostBloc?.postApId == pvm!.apId
       ? _cachedPostBloc!.postBloc
       : (_cachedPostBloc = (
-          postApId: pvm.url,
-          postBloc: post_bloc.PostBloc(),
+          postApId: pvm.apId,
+          postBloc: post_bloc.PostBloc(account: account),
         ))
           .postBloc;
 
@@ -205,15 +201,15 @@ Future<void> navigateToPost(
           BlocProvider.value(value: profileBloc),
           BlocProvider.value(value: thunderBloc),
           BlocProvider.value(value: postBloc),
-          BlocProvider(create: (context) => InstanceBloc(lemmyClient: LemmyClient.instance)),
-          BlocProvider(create: (context) => CommunityBloc(lemmyClient: LemmyClient.instance)),
+          BlocProvider(create: (context) => InstanceBloc(account: account)),
+          BlocProvider(create: (context) => CommunityBloc(account: account)),
           BlocProvider(create: (context) => AnonymousSubscriptionsBloc()),
         ],
         child: PostPage(
           initialPost: postBloc.state.post ?? pvm!,
           onPostUpdated: (ThunderPost post) {
             // Manually marking the read attribute as true when navigating to post since there is a case where the API call to mark the post as read from the feed page is not completed in time
-            feedBloc?.add(FeedItemUpdatedEvent(post: post.copyWith(postView: post.internalPostView?.copyWith(read: true))));
+            feedBloc?.add(FeedItemUpdatedEvent(post: post.copyWith(read: true)));
           },
         ),
       );
@@ -231,14 +227,14 @@ Future<void> navigateToModlogPage(
   int? userId,
   int? moderatorId,
   int? commentId,
-  LemmyClient? lemmyClient,
   required String subtitle,
 }) async {
   final thunderBloc = context.read<ThunderBloc>();
+  final account = context.read<ProfileBloc>().state.account;
 
   // Optional blocs
   final hasFeedBloc = context.findAncestorWidgetOfExactType<BlocProvider<FeedBloc>>();
-  final feedBloc = hasFeedBloc != null ? context.read<FeedBloc>() : FeedBloc(lemmyClient: lemmyClient ?? LemmyClient.instance);
+  final feedBloc = hasFeedBloc != null ? context.read<FeedBloc>() : FeedBloc(account: account);
 
   final state = thunderBloc.state;
   final reduceAnimations = state.reduceAnimations;
@@ -264,7 +260,6 @@ Future<void> navigateToModlogPage(
         userId: userId,
         moderatorId: moderatorId,
         commentId: commentId,
-        lemmyClient: lemmyClient,
         subtitle: subtitle,
       ),
     ),
@@ -280,18 +275,8 @@ Future<void> navigateToComment(BuildContext context, ThunderComment comment) asy
   final ThunderState state = context.read<ThunderBloc>().state;
   final bool reduceAnimations = state.reduceAnimations;
 
-  final client = LemmyClient.instance.lemmyApiV3;
-  final account = await fetchActiveProfile();
-
-  GetPostResponse getPostResponse = await client.run(
-    GetPost(
-      auth: account.jwt,
-      id: comment.post?.id,
-      commentId: comment.id,
-    ),
-  );
-
-  List<ThunderPost> posts = await parsePosts([getPostResponse.postView]);
+  final account = context.read<ProfileBloc>().state.account;
+  final post = await LemmyPostRepository(account: account).getPost(comment.post!.id, commentId: comment.id);
 
   final SwipeablePageRoute route = SwipeablePageRoute(
     transitionDuration: isLoadingPageShown
@@ -307,10 +292,10 @@ Future<void> navigateToComment(BuildContext context, ThunderComment comment) asy
       providers: [
         BlocProvider.value(value: profileBloc),
         BlocProvider.value(value: thunderBloc),
-        BlocProvider(create: (context) => PostBloc()),
+        BlocProvider(create: (context) => PostBloc(account: account)),
       ],
       child: PostPage(
-        initialPost: posts.first,
+        initialPost: post!['post'],
         highlightedCommentId: comment.id,
         commentPath: comment.path,
         onPostUpdated: (ThunderPost post) {},
@@ -379,12 +364,13 @@ Future<void> navigateToCreatePostPage(
 }) async {
   try {
     final l10n = AppLocalizations.of(context)!;
+    final account = context.read<ProfileBloc>().state.account;
 
     FeedBloc? feedBloc;
     PostBloc? postBloc;
     ThunderBloc thunderBloc = context.read<ThunderBloc>();
     ProfileBloc profileBloc = context.read<ProfileBloc>();
-    CreatePostCubit createPostCubit = CreatePostCubit();
+    CreatePostCubit createPostCubit = CreatePostCubit(account: account);
 
     final ThunderState thunderState = context.read<ThunderBloc>().state;
     final bool reduceAnimations = thunderState.reduceAnimations;
@@ -416,7 +402,7 @@ Future<void> navigateToCreatePostPage(
       builder: (navigatorContext) {
         return MultiBlocProvider(
           providers: [
-            feedBloc != null ? BlocProvider<FeedBloc>.value(value: feedBloc) : BlocProvider(create: (context) => FeedBloc(lemmyClient: LemmyClient.instance)),
+            feedBloc != null ? BlocProvider<FeedBloc>.value(value: feedBloc) : BlocProvider(create: (context) => FeedBloc(account: account)),
             if (postBloc != null) BlocProvider<PostBloc>.value(value: postBloc),
             BlocProvider<ThunderBloc>.value(value: thunderBloc),
             BlocProvider<ProfileBloc>.value(value: profileBloc),
@@ -498,13 +484,12 @@ void navigateToNotificationReplyPage(BuildContext context, {required int? replyI
 
   // Load the notifications
   while (!doneFetching) {
-    final GetRepliesResponse getRepliesResponse = await (LemmyClient()..changeBaseUrl(account.instance)).lemmyApiV3.run(GetReplies(
-          sort: CommentSortType.new_.toLemmyType(),
-          page: currentPage,
-          limit: 50,
-          unreadOnly: replyId == null,
-          auth: account.jwt,
-        ));
+    final getRepliesResponse = await LemmyNotificationRepository(account: account).replies(
+      unread: replyId == null,
+      limit: 50,
+      sort: CommentSortType.new_,
+      page: currentPage,
+    );
 
     allReplies.addAll(getRepliesResponse.replies);
     specificReply ??= getRepliesResponse.replies.firstWhereOrNull((crv) => crv.commentReply.id == replyId);
@@ -606,8 +591,8 @@ Future<void> navigateToFeedPage(
             feedType: feedType,
             feedListType: feedListType,
             postSortType: postSortType ??
-                (profileBloc.state.getSiteResponse?.myUser?.localUserView.localUser.defaultSortType != null
-                    ? PostSortTypeMapping.fromLemmyType(profileBloc.state.getSiteResponse!.myUser!.localUserView.localUser.defaultSortType)
+                (profileBloc.state.siteResponse?.myUser?.localUserView.localUser.defaultSortType != null
+                    ? profileBloc.state.siteResponse!.myUser!.localUserView.localUser.defaultSortType
                     : thunderBloc.state.postSortTypeForInstance),
             communityId: communityId,
             communityName: communityName,
@@ -641,8 +626,8 @@ Future<void> navigateToFeedPage(
         child: FeedPage(
           feedType: feedType,
           postSortType: postSortType ??
-              (profileBloc.state.getSiteResponse?.myUser?.localUserView.localUser.defaultSortType != null
-                  ? PostSortTypeMapping.fromLemmyType(profileBloc.state.getSiteResponse!.myUser!.localUserView.localUser.defaultSortType)
+              (profileBloc.state.siteResponse?.myUser?.localUserView.localUser.defaultSortType != null
+                  ? profileBloc.state.siteResponse!.myUser!.localUserView.localUser.defaultSortType
                   : thunderBloc.state.postSortTypeForInstance),
           communityName: communityName,
           communityId: communityId,
@@ -672,6 +657,8 @@ void navigateToSearchPage(BuildContext context) {
   final reduceAnimations = state.reduceAnimations;
   final enableFullScreenSwipeNavigationGesture = state.enableFullScreenSwipeNavigationGesture;
 
+  final account = context.read<ProfileBloc>().state.account;
+
   Navigator.of(context).push(
     SwipeablePageRoute(
       transitionDuration: reduceAnimations ? const Duration(milliseconds: 100) : null,
@@ -679,7 +666,7 @@ void navigateToSearchPage(BuildContext context) {
       canOnlySwipeFromEdge: true,
       builder: (context) => MultiBlocProvider(
         providers: [
-          BlocProvider(create: (context) => SearchBloc()),
+          BlocProvider(create: (context) => SearchBloc(account: account)),
           BlocProvider.value(value: thunderBloc),
         ],
         child: SearchPage(communityToSearch: feedBloc.state.community, isInitiallyFocused: true),
@@ -698,6 +685,8 @@ void navigateToSettingPage(BuildContext context, LocalSettings setting, {LocalSe
   final state = thunderBloc.state;
   final reduceAnimations = state.reduceAnimations;
   final enableFullScreenSwipeNavigationGesture = state.enableFullScreenSwipeNavigationGesture;
+
+  final account = context.read<ProfileBloc>().state.account;
 
   String pageToNav = {
         LocalSettingsCategories.posts: SETTINGS_APPEARANCE_POSTS_PAGE,
@@ -738,7 +727,7 @@ void navigateToSettingPage(BuildContext context, LocalSettings setting, {LocalSe
   } else if (pageToNav == SETTINGS_ACCOUNT_MEDIA_PAGE) {
     final hasUserSettingsBloc = context.findAncestorWidgetOfExactType<BlocProvider<UserSettingsBloc>>() != null;
 
-    final userSettingsBloc = hasUserSettingsBloc ? context.read<UserSettingsBloc>() : UserSettingsBloc();
+    final userSettingsBloc = hasUserSettingsBloc ? context.read<UserSettingsBloc>() : UserSettingsBloc(account: account);
 
     userSettingsBloc.add(const ListMediaEvent());
 
@@ -758,7 +747,7 @@ void navigateToSettingPage(BuildContext context, LocalSettings setting, {LocalSe
     );
   } else {
     final hasUserSettingsBloc = context.findAncestorWidgetOfExactType<BlocProvider<UserSettingsBloc>>() != null;
-    final userSettingsBloc = hasUserSettingsBloc ? context.read<UserSettingsBloc>() : UserSettingsBloc();
+    final userSettingsBloc = hasUserSettingsBloc ? context.read<UserSettingsBloc>() : UserSettingsBloc(account: account);
 
     Navigator.of(context).push(
       SwipeablePageRoute(

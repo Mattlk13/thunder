@@ -1,15 +1,14 @@
 import 'dart:async';
 
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_typeahead/flutter_typeahead.dart';
-import 'package:lemmy_api_client/v3.dart';
-import 'package:thunder/account/account.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
-import 'package:thunder/core/singletons/lemmy_client.dart';
+import 'package:thunder/account/account.dart';
+import 'package:thunder/instance/repository/instance_repository.dart';
 import 'package:thunder/instances.dart';
 import 'package:thunder/shared/dialogs.dart';
 import 'package:thunder/shared/snackbar.dart';
@@ -480,17 +479,18 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
         });
       } else {
         // Check for content warning on anyonmous instance
-        GetSiteResponse getSiteResponse = await (LemmyClient()..changeBaseUrl(_instanceTextEditingController.text)).lemmyApiV3.run(const GetSite());
+        final account = Account(id: '', instance: _instanceTextEditingController.text, index: -1);
+        final siteResponse = await LemmyInstanceRepository(account: account).getSiteInfo();
 
         bool acceptedContentWarning = true;
 
-        if (getSiteResponse.siteView.site.contentWarning?.isNotEmpty == true) {
+        if (siteResponse.siteView.contentWarning?.isNotEmpty == true) {
           acceptedContentWarning = false;
 
           await showThunderDialog<void>(
             context: context,
             title: l10n.contentWarning,
-            contentText: getSiteResponse.siteView.site.contentWarning,
+            contentText: siteResponse.siteView.contentWarning,
             onSecondaryButtonPressed: (dialogContext) => Navigator.of(dialogContext).pop(),
             secondaryButtonText: l10n.decline,
             onPrimaryButtonPressed: (dialogContext, _) async {

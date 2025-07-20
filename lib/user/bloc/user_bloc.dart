@@ -2,14 +2,14 @@ import 'package:bloc/bloc.dart';
 import 'package:bloc_concurrency/bloc_concurrency.dart';
 import 'package:collection/collection.dart';
 import 'package:equatable/equatable.dart';
-import 'package:lemmy_api_client/v3.dart';
 import 'package:stream_transform/stream_transform.dart';
-import 'package:thunder/localizations/app_localizations.dart';
 
-import 'package:thunder/core/models/models.dart';
+import 'package:thunder/account/models/account.dart';
+import 'package:thunder/community/repository/community_repository.dart';
+import 'package:thunder/localizations/app_localizations.dart';
 import 'package:thunder/user/enums/user_action.dart';
-import 'package:thunder/core/singletons/lemmy_client.dart';
-import 'package:thunder/user/utils/user.dart';
+import 'package:thunder/user/models/thunder_user.dart';
+import 'package:thunder/user/repository/user_repository.dart';
 import 'package:thunder/utils/global_context.dart';
 
 part 'user_event.dart';
@@ -24,9 +24,15 @@ EventTransformer<E> throttleDroppable<E>(Duration duration) {
 }
 
 class UserBloc extends Bloc<UserEvent, UserState> {
-  final LemmyClient lemmyClient;
+  Account account;
 
-  UserBloc({required this.lemmyClient}) : super(const UserState()) {
+  late CommunityRepository communityRepository;
+  late UserRepository userRepository;
+
+  UserBloc({required this.account}) : super(const UserState()) {
+    communityRepository = LemmyCommunityRepository(account: account);
+    userRepository = LemmyUserRepository(account: account);
+
     /// Handles clearing any messages from the state
     on<UserClearMessageEvent>(
       _onUserClearMessage,
@@ -54,12 +60,12 @@ class UserBloc extends Bloc<UserEvent, UserState> {
     switch (event.userAction) {
       case UserAction.block:
         try {
-          BlockPersonResponse blockPersonResponse = await blockUser(event.userId, event.value);
+          final response = await userRepository.block(event.userId, event.value);
+
           emit(state.copyWith(
             status: UserStatus.success,
-            user: ThunderUser(blockPersonResponse.personView.person, userView: blockPersonResponse.personView),
-            message:
-                blockPersonResponse.blocked ? l10n.successfullyBlockedUser(blockPersonResponse.personView.person.name) : l10n.successfullyUnblockedUser(blockPersonResponse.personView.person.name),
+            user: ThunderUser.fromLemmyUserView(response.personView.toJson()),
+            message: response.blocked ? l10n.successfullyBlockedUser(response.personView.person.name) : l10n.successfullyUnblockedUser(response.personView.person.name),
           ));
         } catch (e) {
           return emit(state.copyWith(status: UserStatus.failure, message: e.toString()));
@@ -80,11 +86,18 @@ class UserBloc extends Bloc<UserEvent, UserState> {
             expires = expires ~/ 1000;
           }
 
-          BanFromCommunityResponse banFromCommunityResponse = await banUserFromCommunity(event.userId, event.value, communityId: communityId, reason: reason, expires: expires, removeData: removeData);
+          final banFromCommunityResponse = await communityRepository.banUserFromCommunity(
+            userId: event.userId,
+            ban: event.value,
+            communityId: communityId,
+            reason: reason,
+            expires: expires,
+            removeData: removeData,
+          );
 
           emit(state.copyWith(
             status: UserStatus.success,
-            user: ThunderUser(banFromCommunityResponse.personView.person, userView: banFromCommunityResponse.personView),
+            user: ThunderUser.fromLemmyUserView(banFromCommunityResponse.personView.toJson()),
             message: banFromCommunityResponse.banned
                 ? l10n.successfullyBannedUser(banFromCommunityResponse.personView.person.name)
                 : l10n.successfullyUnbannedUser(banFromCommunityResponse.personView.person.name),
@@ -100,8 +113,8 @@ class UserBloc extends Bloc<UserEvent, UserState> {
 
           int communityId = event.metadata!['communityId'] as int;
 
-          AddModToCommunityResponse addModToCommunityResponse = await addModerator(event.userId, event.value, communityId: communityId);
-          CommunityModeratorView? communityModeratorView = addModToCommunityResponse.moderators.firstWhereOrNull((communityModeratorView) => communityModeratorView.moderator.id == event.userId);
+          final addModToCommunityResponse = await communityRepository.addModerator(userId: event.userId, added: event.value, communityId: communityId);
+          final communityModeratorView = addModToCommunityResponse.moderators.firstWhereOrNull((communityModeratorView) => communityModeratorView.moderator.id == event.userId);
 
           emit(state.copyWith(
             status: UserStatus.success,

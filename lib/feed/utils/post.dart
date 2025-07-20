@@ -1,18 +1,18 @@
 import 'package:flutter/foundation.dart';
+
 import 'package:lemmy_api_client/v3.dart';
 
 import 'package:thunder/account/account.dart';
+import 'package:thunder/comment/models/thunder_comment.dart';
 import 'package:thunder/core/enums/enums.dart';
 import 'package:thunder/core/enums/local_settings.dart';
 import 'package:thunder/core/enums/post_sort_type.dart';
-import 'package:thunder/core/enums/subscription_status.dart';
-import 'package:thunder/core/models/models.dart';
-import 'package:thunder/core/singletons/lemmy_client.dart';
 import 'package:thunder/core/singletons/preferences.dart';
 import 'package:thunder/feed/enums/feed_type_subview.dart';
-import 'package:thunder/localizations/app_localizations.dart';
+import 'package:thunder/post/models/thunder_post.dart';
 import 'package:thunder/post/utils/post.dart';
-import 'package:thunder/utils/global_context.dart';
+import 'package:thunder/post/repository/post_repository.dart';
+import 'package:thunder/user/repository/user_repository.dart';
 
 /// Helper function which handles the logic of fetching items for the feed from the API
 /// This includes posts and user information (posts/comments)
@@ -30,7 +30,6 @@ Future<Map<String, dynamic>> fetchFeedItems({
   void Function()? notifyExcessiveApiCalls,
 }) async {
   final account = await fetchActiveProfile();
-  LemmyApiV3 lemmy = LemmyClient.instance.lemmyApiV3;
 
   List<String> keywordFilters = UserPreferences.getLocalSetting(LocalSettings.keywordFilters) ?? [];
 
@@ -46,16 +45,16 @@ Future<Map<String, dynamic>> fetchFeedItems({
   // Guarantee that we fetch at least x posts (unless we reach the end of the feed)
   if (communityId != null || communityName != null || feedListType != null) {
     do {
-      GetPostsResponse getPostsResponse = await lemmy.run(GetPosts(
-        auth: account.jwt,
+      final postRepository = LemmyPostRepository(account: account);
+      GetPostsResponse getPostsResponse = await postRepository.getPosts(
         page: currentPage,
-        sort: postSortType?.toLemmyType(),
-        type: feedListType?.toLemmyType(),
+        postSortType: postSortType,
+        feedListType: feedListType,
         communityId: communityId,
         communityName: communityName,
         showHidden: showHidden,
-        savedOnly: showSaved,
-      ));
+        showSaved: showSaved,
+      );
 
       // Keep the length of the original response to see if there are any additional posts to fetch
       int postResponseLength = getPostsResponse.posts.length;
@@ -100,17 +99,18 @@ Future<Map<String, dynamic>> fetchFeedItems({
   // Guarantee that we fetch at least x posts/comments (unless we reach the end of the feed)
   if (userId != null || username != null) {
     do {
-      GetPersonDetailsResponse getPersonDetailsResponse = await lemmy.run(GetPersonDetails(
-        auth: account.jwt,
-        personId: userId,
+      final userRepository = LemmyUserRepository(account: account);
+
+      GetPersonDetailsResponse? getPersonDetailsResponse = await userRepository.getUser(
+        userId: userId,
         username: username,
+        sort: postSortType,
         page: currentPage,
-        sort: postSortType?.toLemmyType(),
-        savedOnly: showSaved,
-      ));
+        saved: showSaved,
+      );
 
       // Remove deleted posts and comments
-      getPersonDetailsResponse = getPersonDetailsResponse.copyWith(
+      getPersonDetailsResponse = getPersonDetailsResponse!.copyWith(
         posts: getPersonDetailsResponse.posts.where((PostView postView) => postView.post.deleted == false).toList(),
         comments: getPersonDetailsResponse.comments.where((CommentView commentView) => commentView.comment.deleted == false).toList(),
       );
@@ -119,7 +119,7 @@ Future<Map<String, dynamic>> fetchFeedItems({
       List<ThunderPost> formattedPosts = await parsePosts(getPersonDetailsResponse.posts);
       posts.addAll(formattedPosts);
 
-      comments.addAll(getPersonDetailsResponse.comments.map((commentView) => ThunderComment(comment: commentView.comment, commentView: commentView)));
+      comments.addAll(getPersonDetailsResponse.comments.map((commentView) => ThunderComment.fromLemmyCommentView(commentView.toJson())));
 
       if (getPersonDetailsResponse.posts.isEmpty) hasReachedPostsEnd = true;
       if (getPersonDetailsResponse.comments.isEmpty) hasReachedCommentsEnd = true;
@@ -128,142 +128,4 @@ Future<Map<String, dynamic>> fetchFeedItems({
   }
 
   return {'posts': posts, 'comments': comments, 'hasReachedPostsEnd': hasReachedPostsEnd, 'hasReachedCommentsEnd': hasReachedCommentsEnd, 'currentPage': currentPage};
-}
-
-/// Logic to create a post
-Future<PostView> createPost({
-  required int communityId,
-  required String name,
-  String? body,
-  String? url,
-  String? customThumbnail,
-  String? altText,
-  bool? nsfw,
-  int? postIdBeingEdited,
-  int? languageId,
-}) async {
-  final l10n = AppLocalizations.of(GlobalContext.context)!;
-  final account = await fetchActiveProfile();
-  if (account.anonymous) throw Exception(l10n.userNotLoggedIn);
-
-  LemmyApiV3 lemmy = LemmyClient.instance.lemmyApiV3;
-
-  PostResponse postResponse;
-  if (postIdBeingEdited != null) {
-    postResponse = await lemmy.run(EditPost(
-      auth: account.jwt!,
-      name: name,
-      body: body,
-      url: url?.isEmpty == true ? null : url,
-      customThumbnail: customThumbnail?.isEmpty == true ? null : customThumbnail,
-      altText: altText?.isEmpty == true ? null : altText,
-      nsfw: nsfw,
-      postId: postIdBeingEdited,
-      languageId: languageId,
-    ));
-  } else {
-    postResponse = await lemmy.run(CreatePost(
-      auth: account.jwt!,
-      communityId: communityId,
-      name: name,
-      body: body,
-      url: url?.isEmpty == true ? null : url,
-      customThumbnail: customThumbnail?.isEmpty == true ? null : customThumbnail,
-      altText: altText?.isEmpty == true ? null : altText,
-      nsfw: nsfw,
-      languageId: languageId,
-    ));
-  }
-
-  return postResponse.postView;
-}
-
-/// Creates a placeholder post from the given parameters. This is mainly used to display a preview of the post
-/// with the applied settings on Settings -> Appearance -> Posts page.
-Future<ThunderPost?> createExamplePost({
-  String? postTitle,
-  String? postUrl,
-  String? postBody,
-  String? postThumbnailUrl,
-  String? postAltText,
-  bool? locked,
-  bool? nsfw,
-  bool? pinned,
-  String? personName,
-  String? personDisplayName,
-  String? personInstance,
-  String? communityName,
-  String? instanceUrl,
-  int? commentCount,
-  int? scoreCount,
-  bool? saved,
-  bool? read,
-}) async {
-  PostView postView = PostView(
-    post: Post(
-      id: 1,
-      name: postTitle ?? 'Example Title',
-      url: postUrl,
-      body: postBody,
-      thumbnailUrl: postThumbnailUrl,
-      altText: postAltText,
-      creatorId: 1,
-      communityId: 1,
-      removed: false,
-      locked: locked ?? false,
-      published: DateTime.now(),
-      deleted: false,
-      nsfw: nsfw ?? false,
-      apId: '',
-      local: false,
-      languageId: 0,
-      featuredCommunity: pinned ?? false,
-      featuredLocal: false,
-    ),
-    creator: Person(
-      id: 1,
-      name: personName ?? 'Example Username',
-      displayName: personDisplayName ?? 'Example Name',
-      banned: false,
-      published: DateTime.now(),
-      actorId: 'https://$personInstance/u/$personName',
-      local: false,
-      deleted: false,
-      botAccount: false,
-      instanceId: 1,
-    ),
-    community: Community(
-      id: 1,
-      name: communityName ?? 'Example Community',
-      title: '',
-      removed: false,
-      published: DateTime.now(),
-      deleted: false,
-      nsfw: false,
-      actorId: instanceUrl ?? 'https://thunder.lemmy',
-      local: false,
-      hidden: false,
-      postingRestrictedToMods: false,
-      instanceId: 1,
-    ),
-    creatorBannedFromCommunity: false,
-    counts: PostAggregates(
-      id: 1,
-      postId: 1,
-      comments: commentCount ?? 0,
-      score: scoreCount ?? 0,
-      upvotes: 0,
-      downvotes: 0,
-      published: DateTime.now(),
-    ),
-    subscribed: SubscriptionStatus.notSubscribed.toLemmyType(),
-    saved: saved ?? false,
-    read: read ?? false,
-    creatorBlocked: false,
-    unreadComments: 0,
-  );
-
-  List<ThunderPost> posts = await parsePosts([postView]);
-
-  return Future.value(posts.firstOrNull);
 }

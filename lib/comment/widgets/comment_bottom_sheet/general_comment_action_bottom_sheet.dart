@@ -4,8 +4,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:thunder/account/account.dart';
 import 'package:thunder/comment/comment.dart';
+import 'package:thunder/comment/models/thunder_comment.dart';
 import 'package:thunder/core/enums/full_name.dart';
-import 'package:thunder/core/models/models.dart';
 import 'package:thunder/post/enums/post_action.dart';
 import 'package:thunder/post/widgets/post_bottom_sheet/post_action_bottom_sheet.dart';
 import 'package:thunder/shared/bottom_sheet_action.dart';
@@ -214,7 +214,7 @@ class _GeneralCommentActionBottomSheetPageState extends State<GeneralCommentActi
       }
 
       // Hide edit if the comment is not made by the current user
-      if (widget.comment.creator?.actorId != profileState.account?.actorId) {
+      if (widget.comment.creator?.actorId != profileState.account.actorId) {
         quickActions = quickActions.where((action) => action != GeneralQuickCommentAction.edit).toList();
       }
     }

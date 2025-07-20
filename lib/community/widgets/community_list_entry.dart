@@ -2,17 +2,16 @@ import 'package:flutter/material.dart';
 
 import 'package:collection/collection.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:lemmy_api_client/v3.dart';
 
 import 'package:thunder/community/bloc/anonymous_subscriptions_bloc.dart';
 import 'package:thunder/community/bloc/community_bloc.dart';
 import 'package:thunder/community/enums/community_action.dart';
 import 'package:thunder/account/account.dart';
+import 'package:thunder/community/models/thunder_community.dart';
 import 'package:thunder/core/enums/full_name.dart';
 import 'package:thunder/core/enums/subscription_status.dart';
-import 'package:thunder/core/models/models.dart';
-import 'package:thunder/core/singletons/lemmy_client.dart';
 import 'package:thunder/feed/view/feed_page.dart';
+import 'package:thunder/search/repository/search_repository.dart';
 import 'package:thunder/shared/avatars/community_avatar.dart';
 import 'package:thunder/shared/full_name_widgets.dart';
 import 'package:thunder/shared/snackbar.dart';
@@ -52,7 +51,7 @@ class _CommunityListEntryState extends State<CommunityListEntry> {
         context.read<AnonymousSubscriptionsBloc>().add(AddSubscriptionsEvent(communities: {widget.community}));
         context.read<AnonymousSubscriptionsBloc>().add(GetSubscribedCommunitiesEvent());
       } else {
-        context.read<AnonymousSubscriptionsBloc>().add(DeleteSubscriptionsEvent(urls: {widget.community.url}));
+        context.read<AnonymousSubscriptionsBloc>().add(DeleteSubscriptionsEvent(urls: {widget.community.actorId}));
       }
     }
   }
@@ -67,18 +66,19 @@ class _CommunityListEntryState extends State<CommunityListEntry> {
     // Fetch the community from the user's subscriptions or anonymous subscriptions if possible
     if (isUserLoggedIn) {
       final subscriptions = context.select<ProfileBloc, List<ThunderCommunity>>((bloc) => bloc.state.subscriptions);
-      community = subscriptions.firstWhereOrNull((c) => c.url == widget.community.url) ?? widget.community;
+      community = subscriptions.firstWhereOrNull((c) => c.actorId == widget.community.actorId) ?? widget.community;
     } else {
       final subscriptions = context.select<AnonymousSubscriptionsBloc, List<ThunderCommunity>>((bloc) => bloc.state.subscriptions);
-      community = subscriptions.firstWhereOrNull((c) => c.url == widget.community.url) ?? widget.community;
+      community = subscriptions.firstWhereOrNull((c) => c.actorId == widget.community.actorId) ?? widget.community;
     }
 
-    final favourited = context.select<ProfileBloc, bool>((bloc) => bloc.state.favorites.any((c) => c.url == community.url));
+    final favourited = context.select<ProfileBloc, bool>((bloc) => bloc.state.favorites.any((c) => c.actorId == community.actorId));
 
     String subscriptionButtonLabel = switch (community.subscribed) {
       SubscriptionStatus.notSubscribed => l10n.subscribe,
       SubscriptionStatus.pending => l10n.unsubscribePending,
       SubscriptionStatus.subscribed => l10n.unsubscribe,
+      _ => '',
     };
 
     return BlocListener<CommunityBloc, CommunityState>(
@@ -91,7 +91,7 @@ class _CommunityListEntryState extends State<CommunityListEntry> {
           context,
           widget.community.name,
           widget.community.title,
-          fetchInstanceNameFromUrl(widget.community.url),
+          fetchInstanceNameFromUrl(widget.community.actorId),
         )}',
         preferBelow: false,
         child: ListTile(
@@ -104,7 +104,7 @@ class _CommunityListEntryState extends State<CommunityListEntry> {
                   context,
                   widget.community.name,
                   widget.community.title,
-                  fetchInstanceNameFromUrl(widget.community.url),
+                  fetchInstanceNameFromUrl(widget.community.actorId),
                   // Override because we're showing display name above
                   useDisplayName: false,
                 ),
@@ -134,6 +134,7 @@ class _CommunityListEntryState extends State<CommunityListEntry> {
                         SubscriptionStatus.notSubscribed => Icons.add_circle_outline_rounded,
                         SubscriptionStatus.pending => Icons.pending_outlined,
                         SubscriptionStatus.subscribed => Icons.remove_circle_outline_rounded,
+                        _ => null,
                       },
                     ),
                   ),
@@ -146,8 +147,9 @@ class _CommunityListEntryState extends State<CommunityListEntry> {
 
             if (widget.resolutionInstance != null) {
               try {
-                final lemmy = (LemmyClient()..changeBaseUrl(widget.resolutionInstance!)).lemmyApiV3;
-                final response = await lemmy.run(ResolveObject(q: widget.community.url));
+                // Create a temporary Account
+                final account = Account(instance: widget.resolutionInstance!, id: '', index: -1);
+                final response = await LemmySearchRepository(account: account).resolve(query: widget.community.actorId);
 
                 communityId = response.community?.community.id;
               } catch (e) {

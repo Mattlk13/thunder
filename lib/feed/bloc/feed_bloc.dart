@@ -4,17 +4,22 @@ import 'package:equatable/equatable.dart';
 import 'package:lemmy_api_client/v3.dart';
 import 'package:stream_transform/stream_transform.dart';
 
-import 'package:thunder/account/account.dart';
+import 'package:thunder/account/models/account.dart';
+import 'package:thunder/comment/models/thunder_comment.dart';
+import 'package:thunder/community/models/thunder_community.dart';
+import 'package:thunder/community/repository/community_repository.dart';
 import 'package:thunder/core/enums/enums.dart';
 import 'package:thunder/core/enums/post_sort_type.dart';
 import 'package:thunder/core/models/models.dart';
-import 'package:thunder/core/singletons/lemmy_client.dart';
 import 'package:thunder/feed/enums/feed_type_subview.dart';
-import 'package:thunder/feed/utils/community.dart';
 import 'package:thunder/feed/utils/post.dart';
 import 'package:thunder/feed/view/feed_page.dart';
 import 'package:thunder/post/enums/post_action.dart';
+import 'package:thunder/post/models/thunder_post.dart';
+import 'package:thunder/post/repository/post_repository.dart';
 import 'package:thunder/post/utils/post.dart';
+import 'package:thunder/user/models/thunder_user.dart';
+import 'package:thunder/user/repository/user_repository.dart';
 import 'package:thunder/utils/error_messages.dart';
 
 part 'feed_event.dart';
@@ -29,9 +34,17 @@ EventTransformer<E> throttleDroppable<E>(Duration duration) {
 }
 
 class FeedBloc extends Bloc<FeedEvent, FeedState> {
-  final LemmyClient lemmyClient;
+  Account account;
 
-  FeedBloc({required this.lemmyClient}) : super(const FeedState()) {
+  late PostRepository postRepository;
+  late CommunityRepository communityRepository;
+  late UserRepository userRepository;
+
+  FeedBloc({required this.account}) : super(const FeedState()) {
+    postRepository = LemmyPostRepository(account: account);
+    communityRepository = LemmyCommunityRepository(account: account);
+    userRepository = LemmyUserRepository(account: account);
+
     /// Handles resetting the feed to its initial state
     on<ResetFeedEvent>(
       _onResetFeed,
@@ -169,7 +182,7 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
           emit(state.copyWith(status: FeedStatus.success));
           emit(state.copyWith(status: FeedStatus.fetching));
 
-          updatedPost = await votePost(post, event.value);
+          updatedPost = await postRepository.vote(post, event.value);
           state.posts[existingPostIndex] = updatedPost;
 
           emit(state.copyWith(status: FeedStatus.success));
@@ -191,7 +204,7 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
           emit(state.copyWith(status: FeedStatus.success));
           emit(state.copyWith(status: FeedStatus.fetching));
 
-          updatedPost = await savePost(post, event.value);
+          updatedPost = await postRepository.save(post, event.value);
           state.posts[existingPostIndex] = updatedPost;
 
           emit(state.copyWith(status: FeedStatus.success));
@@ -218,7 +231,7 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
           emit(state.copyWith(status: FeedStatus.success));
           emit(state.copyWith(status: FeedStatus.fetching));
 
-          bool success = await markPostAsRead(post.id, event.value);
+          bool success = await postRepository.read(post.id, event.value);
           if (success) return emit(state.copyWith(status: FeedStatus.success));
 
           // Restore the original post contents if not successful
@@ -258,7 +271,7 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
             emit(state.copyWith(status: FeedStatus.success));
             emit(state.copyWith(status: FeedStatus.fetching));
 
-            List<int> failed = await markPostsAsRead(postIds, event.value);
+            List<int> failed = await postRepository.readMultiple(postIds, event.value);
             if (failed.isEmpty) return emit(state.copyWith(status: FeedStatus.success));
 
             // Restore the original post contents if not successful
@@ -288,7 +301,7 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
           emit(state.copyWith(status: FeedStatus.success));
           emit(state.copyWith(status: FeedStatus.fetching));
 
-          bool success = await markPostAsHidden(post.id, event.value);
+          bool success = await postRepository.hide(post.id, event.value);
           if (success) return emit(state.copyWith(status: FeedStatus.success));
 
           // Restore the original post contents if not successful
@@ -312,7 +325,7 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
           emit(state.copyWith(status: FeedStatus.success));
           emit(state.copyWith(status: FeedStatus.fetching));
 
-          bool success = await deletePost(post.id, event.value);
+          bool success = await postRepository.delete(post.id, event.value);
           if (success) return emit(state.copyWith(status: FeedStatus.success));
 
           // Restore the original post contents if not successful
@@ -328,7 +341,7 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
         final post = state.posts[existingPostIndex];
 
         try {
-          await reportPost(post.id, event.value);
+          await postRepository.report(post.id, event.value);
           return emit(state.copyWith(status: FeedStatus.success));
         } catch (e) {
           return emit(state.copyWith(status: FeedStatus.failure));
@@ -346,7 +359,7 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
           emit(state.copyWith(status: FeedStatus.success));
           emit(state.copyWith(status: FeedStatus.fetching));
 
-          bool success = await lockPost(post.id, event.value);
+          bool success = await postRepository.lock(post.id, event.value);
           if (success) return emit(state.copyWith(status: FeedStatus.success));
 
           // Restore the original post contents if not successful
@@ -370,7 +383,7 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
           emit(state.copyWith(status: FeedStatus.success));
           emit(state.copyWith(status: FeedStatus.fetching));
 
-          bool success = await pinPostToCommunity(post.id, event.value);
+          bool success = await postRepository.pinCommunity(post.id, event.value);
           if (success) return emit(state.copyWith(status: FeedStatus.success));
 
           // Restore the original post contents if not successful
@@ -394,7 +407,7 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
           emit(state.copyWith(status: FeedStatus.success));
           emit(state.copyWith(status: FeedStatus.fetching));
 
-          bool success = await removePost(post.id, event.value['remove'], event.value['reason']);
+          bool success = await postRepository.remove(post.id, event.value['remove'], event.value['reason']);
           if (success) return emit(state.copyWith(status: FeedStatus.success));
 
           // Restore the original post contents if not successful
@@ -500,7 +513,7 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
       if (state.status != FeedStatus.initial) add(ResetFeedEvent(softReset: event.feedType == FeedType.account));
 
       ThunderCommunity? community;
-      ThunderInstance? communityInstance;
+      ThunderSite? communityInstance;
       List<ThunderUser> communityModerators = [];
 
       GetPersonDetailsResponse? fullPersonView;
@@ -509,7 +522,7 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
         case FeedType.community:
           // Fetch community information
           try {
-            final result = await fetchCommunityInformation(id: event.communityId, name: event.communityName);
+            final result = await communityRepository.getCommunity(id: event.communityId, name: event.communityName);
             community = result['community'];
             communityInstance = result['instance'];
             communityModerators = result['moderators'];
@@ -526,14 +539,7 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
         case FeedType.account:
           // Fetch user information
           try {
-            final account = await fetchActiveProfile();
-            LemmyApiV3 lemmy = LemmyClient.instance.lemmyApiV3;
-
-            fullPersonView = await lemmy.run(GetPersonDetails(
-              auth: account.jwt,
-              personId: event.userId,
-              username: event.username,
-            ));
+            fullPersonView = await userRepository.getUser(userId: event.userId, username: event.username);
           } catch (e) {
             // If we are given a user feed, but we can't load the user, that's a problem! Emit an error.
             return emit(state.copyWith(
@@ -653,7 +659,7 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
     emit(state.copyWith(status: FeedStatus.fetching));
 
     try {
-      PostView postView = await createPost(
+      final post = await postRepository.create(
         communityId: event.communityId,
         name: event.name,
         body: event.body,
@@ -661,12 +667,9 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
         nsfw: event.nsfw,
       );
 
-      // Parse the newly created post
-      List<ThunderPost> formattedPost = await parsePosts([postView]);
-
       // Add the post to the state
       List<ThunderPost> updatedPosts = List.from(state.posts);
-      updatedPosts.insert(0, formattedPost[0]);
+      updatedPosts.insert(0, post);
 
       emit(state.copyWith(status: FeedStatus.success, posts: updatedPosts));
     } catch (e) {

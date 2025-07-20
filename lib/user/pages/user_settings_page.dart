@@ -8,8 +8,10 @@ import "package:flutter/services.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_file_dialog/flutter_file_dialog.dart";
 import "package:html/parser.dart";
-import "package:lemmy_api_client/v3.dart";
-import "package:thunder/core/enums/post_sort_type.dart";
+import "package:thunder/account/repository/account_repository.dart";
+import "package:thunder/core/models/thunder_local_user.dart";
+import "package:thunder/core/models/thunder_my_user.dart";
+import "package:thunder/core/models/thunder_site_response.dart";
 import 'package:thunder/localizations/app_localizations.dart';
 import "package:path_provider/path_provider.dart";
 import 'package:markdown/markdown.dart' hide Text;
@@ -17,7 +19,6 @@ import 'package:markdown/markdown.dart' hide Text;
 import 'package:thunder/account/account.dart';
 import "package:thunder/core/enums/enums.dart";
 import "package:thunder/core/enums/local_settings.dart";
-import "package:thunder/core/singletons/lemmy_client.dart";
 import "package:thunder/settings/widgets/list_option.dart";
 import "package:thunder/settings/widgets/settings_list_tile.dart";
 import "package:thunder/settings/widgets/toggle_option.dart";
@@ -26,6 +27,7 @@ import "package:thunder/shared/snackbar.dart";
 import "package:thunder/shared/sort_picker.dart";
 import "package:thunder/thunder/thunder_icons.dart";
 import "package:thunder/user/bloc/user_settings_bloc.dart";
+import "package:thunder/user/models/thunder_user.dart";
 import "package:thunder/user/widgets/user_indicator.dart";
 import "package:thunder/utils/bottom_sheet_list_picker.dart";
 import "package:thunder/utils/constants.dart";
@@ -33,7 +35,6 @@ import "package:thunder/utils/error_messages.dart";
 import "package:thunder/utils/global_context.dart";
 import "package:thunder/utils/links.dart";
 import "package:thunder/utils/navigation.dart";
-import "package:version/version.dart";
 
 /// A widget that displays the user's account settings. These settings are synchronized with the instance and should be preferred over the app settings.
 class UserSettingsPage extends StatefulWidget {
@@ -114,11 +115,11 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
                 }
               },
               builder: (context, state) {
-                GetSiteResponse? getSiteResponse = state.getSiteResponse;
+                ThunderSiteResponse? siteResponse = state.siteResponse;
 
-                MyUserInfo? myUserInfo = getSiteResponse?.myUser;
-                LocalUser? localUser = myUserInfo?.localUserView.localUser;
-                Person? person = myUserInfo?.localUserView.person;
+                ThunderMyUser? myUser = siteResponse?.myUser;
+                ThunderLocalUser? localUser = myUser?.localUserView.localUser;
+                ThunderUser? person = myUser?.localUserView.person;
 
                 return CustomScrollView(
                   physics: state.status == UserSettingsStatus.notLoggedIn ? const NeverScrollableScrollPhysics() : null,
@@ -307,7 +308,7 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
                               ),
                               ListOption(
                                 description: l10n.defaultFeedType,
-                                value: ListPickerItem(label: localUser!.defaultListingType.value, icon: Icons.feed, payload: FeedListType.fromLemmyType(localUser.defaultListingType)),
+                                value: ListPickerItem(label: localUser?.defaultListingType?.value ?? "", icon: Icons.feed, payload: localUser?.defaultListingType),
                                 options: [
                                   ListPickerItem(icon: Icons.view_list_rounded, label: FeedListType.subscribed.value, payload: FeedListType.subscribed),
                                   ListPickerItem(icon: Icons.home_rounded, label: FeedListType.all.value, payload: FeedListType.all),
@@ -322,31 +323,27 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
                               ListOption(
                                 description: l10n.defaultFeedSortType,
                                 value: ListPickerItem(
-                                  label: PostSortTypeMapping.fromLemmyType(localUser.defaultSortType)?.name ?? "",
+                                  label: localUser?.defaultSortType?.name ?? "",
                                   icon: Icons.local_fire_department_rounded,
-                                  payload: PostSortTypeMapping.fromLemmyType(localUser.defaultSortType),
+                                  payload: localUser?.defaultSortType,
                                 ),
-                                options: [
-                                  ...SortPicker.getDefaultPostSortTypeItems(minimumVersion: Version(0, 19, 0, preRelease: ["rc", "1"])),
-                                  ...topPostSortTypeItems
-                                ],
+                                options: [...SortPicker.getDefaultPostSortTypeItems(), ...topPostSortTypeItems],
                                 icon: Icons.sort_rounded,
                                 onChanged: (_) async {},
                                 isBottomModalScrollControlled: true,
                                 customListPicker: SortPicker(
-                                  minimumVersion: Version(0, 19, 0, preRelease: ["rc", "1"]),
                                   title: l10n.defaultFeedSortType,
                                   onSelect: (value) async {
                                     context.read<UserSettingsBloc>().add(UpdateUserSettingsEvent(defaultPostSortType: value.payload));
                                   },
-                                  previouslySelected: PostSortTypeMapping.fromLemmyType(localUser.defaultSortType),
+                                  previouslySelected: localUser?.defaultSortType,
                                 ),
                                 valueDisplay: Row(
                                   children: [
-                                    Icon(allPostSortTypeItems.firstWhere((item) => item.payload == PostSortTypeMapping.fromLemmyType(localUser.defaultSortType)).icon, size: 13),
+                                    Icon(allPostSortTypeItems.firstWhere((item) => item.payload == localUser?.defaultSortType).icon, size: 13),
                                     const SizedBox(width: 4),
                                     Text(
-                                      allPostSortTypeItems.firstWhere((item) => item.payload == PostSortTypeMapping.fromLemmyType(localUser.defaultSortType)).label,
+                                      allPostSortTypeItems.firstWhere((item) => item.payload == localUser?.defaultSortType).label,
                                       style: theme.textTheme.titleSmall,
                                     ),
                                   ],
@@ -357,7 +354,7 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
                               ),
                               ToggleOption(
                                 description: l10n.showNsfwContent,
-                                value: localUser.showNsfw,
+                                value: localUser?.showNsfw,
                                 iconEnabled: Icons.no_adult_content,
                                 iconDisabled: Icons.no_adult_content,
                                 onToggle: (bool value) => context.read<UserSettingsBloc>().add(UpdateUserSettingsEvent(showNsfw: value)),
@@ -367,7 +364,7 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
                               ),
                               ToggleOption(
                                 description: l10n.showScores,
-                                value: localUser.showScores,
+                                value: localUser?.showScores,
                                 iconEnabled: Icons.onetwothree_rounded,
                                 iconDisabled: Icons.onetwothree_rounded,
                                 onToggle: (bool value) => {context.read<UserSettingsBloc>().add(UpdateUserSettingsEvent(showScores: value))},
@@ -377,7 +374,7 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
                               ),
                               ToggleOption(
                                 description: l10n.showReadPosts,
-                                value: localUser.showReadPosts,
+                                value: localUser?.showReadPosts,
                                 iconEnabled: Icons.fact_check_rounded,
                                 iconDisabled: Icons.fact_check_outlined,
                                 onToggle: (bool value) => {context.read<UserSettingsBloc>().add(UpdateUserSettingsEvent(showReadPosts: value))},
@@ -398,7 +395,7 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
                               ),
                               ToggleOption(
                                 description: l10n.showBotAccounts,
-                                value: localUser.showBotAccounts,
+                                value: localUser?.showBotAccounts,
                                 iconEnabled: Thunder.robot,
                                 iconDisabled: Thunder.robot,
                                 iconSpacing: 14.0,
@@ -429,121 +426,114 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
                                 setting: LocalSettings.accountBlocks,
                                 highlightedSetting: settingToHighlight,
                               ),
-                              if (LemmyClient.instance.supportsFeature(LemmyFeature.importExportSettings)) ...[
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(l10n.importExportSettings, style: theme.textTheme.titleMedium),
-                                      Text(l10n.importExportLemmyAccountSettingsSubtitle),
-                                    ],
-                                  ),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(l10n.importExportSettings, style: theme.textTheme.titleMedium),
+                                    Text(l10n.importExportLemmyAccountSettingsSubtitle),
+                                  ],
                                 ),
-                                SettingsListTile(
-                                  icon: Icons.file_download_rounded,
-                                  description: l10n.exportLemmyAccountSettingsDescription,
-                                  widget: const SizedBox(height: 42.0, child: Icon(Icons.chevron_right_rounded)),
-                                  onTap: () async {
-                                    dynamic exportSettings;
-                                    try {
-                                      final l10n = AppLocalizations.of(GlobalContext.context)!;
-                                      final account = await fetchActiveProfile();
-                                      if (account.anonymous) throw Exception(l10n.userNotLoggedIn);
+                              ),
+                              SettingsListTile(
+                                icon: Icons.file_download_rounded,
+                                description: l10n.exportLemmyAccountSettingsDescription,
+                                widget: const SizedBox(height: 42.0, child: Icon(Icons.chevron_right_rounded)),
+                                onTap: () async {
+                                  dynamic exportSettings;
+                                  try {
+                                    final account = context.read<ProfileBloc>().state.account;
+                                    exportSettings = await LemmyAccountRepository(account: account).exportSettings();
+                                  } catch (e) {
+                                    // Catch rate-limit errors
+                                    showSnackbar(getExceptionErrorMessage(e));
+                                    return;
+                                  }
 
-                                      exportSettings = await LemmyClient.instance.lemmyApiV3.run(ExportSettings(auth: account.jwt));
-                                    } catch (e) {
-                                      // Catch rate-limit errors
-                                      showSnackbar(getExceptionErrorMessage(e));
+                                  try {
+                                    final String initialFilePath = (await getApplicationDocumentsDirectory()).path;
+                                    // Use the same naming convention as the web UI
+                                    String initialFileName = 'lemmy_user_settings_${DateTime.now().toUtc().toIso8601String().replaceAll(":", "").replaceAll("-", "")}.json';
+                                    final filePath = '$initialFilePath/$initialFileName';
+
+                                    final File file = File(filePath);
+                                    await file.writeAsString(jsonEncode(exportSettings));
+
+                                    final String? savedFilePath = await FlutterFileDialog.saveFile(
+                                      params: SaveFileDialogParams(
+                                        mimeTypesFilter: ['application/json'],
+                                        sourceFilePath: filePath,
+                                        fileName: initialFileName,
+                                      ),
+                                    );
+
+                                    if (savedFilePath?.isNotEmpty == true) {
+                                      showSnackbar(l10n.accountSettingsExportedSuccessfully(savedFilePath!));
+                                    } else {
+                                      showSnackbar(l10n.errorSavingAccountSettings);
+                                    }
+                                  } catch (e) {
+                                    showSnackbar('${l10n.errorSavingAccountSettings} $e');
+                                  }
+                                },
+                                highlightKey: settingToHighlightKey,
+                                setting: LocalSettings.accountExportSettings,
+                                highlightedSetting: settingToHighlight,
+                              ),
+                              SettingsListTile(
+                                icon: Icons.file_upload_rounded,
+                                description: l10n.importLemmyAccountSettingsDescription,
+                                widget: const SizedBox(height: 42.0, child: Icon(Icons.chevron_right_rounded)),
+                                onTap: () async {
+                                  String importSettings;
+
+                                  try {
+                                    final filePath = await FlutterFileDialog.pickFile(
+                                      params: const OpenFileDialogParams(
+                                        fileExtensionsFilter: ['json'],
+                                      ),
+                                    );
+
+                                    if (filePath != null) {
+                                      importSettings = await File(filePath).readAsString();
+                                    } else {
+                                      showSnackbar(l10n.errorLoadingAccountSettings);
                                       return;
                                     }
-
-                                    try {
-                                      final String initialFilePath = (await getApplicationDocumentsDirectory()).path;
-                                      // Use the same naming convention as the web UI
-                                      String initialFileName = 'lemmy_user_settings_${DateTime.now().toUtc().toIso8601String().replaceAll(":", "").replaceAll("-", "")}.json';
-                                      final filePath = '$initialFilePath/$initialFileName';
-
-                                      final File file = File(filePath);
-                                      await file.writeAsString(jsonEncode(exportSettings));
-
-                                      final String? savedFilePath = await FlutterFileDialog.saveFile(
-                                        params: SaveFileDialogParams(
-                                          mimeTypesFilter: ['application/json'],
-                                          sourceFilePath: filePath,
-                                          fileName: initialFileName,
-                                        ),
-                                      );
-
-                                      if (savedFilePath?.isNotEmpty == true) {
-                                        showSnackbar(l10n.accountSettingsExportedSuccessfully(savedFilePath!));
-                                      } else {
-                                        showSnackbar(l10n.errorSavingAccountSettings);
-                                      }
-                                    } catch (e) {
-                                      showSnackbar('${l10n.errorSavingAccountSettings} $e');
+                                  } catch (e) {
+                                    if (e is FormatException) {
+                                      showSnackbar(l10n.errorParsingJson);
+                                    } else if ((e as PlatformException?)?.code == "invalid_file_extension") {
+                                      showSnackbar(l10n.youMustSelectAJsonFile);
+                                    } else {
+                                      showSnackbar('${l10n.errorLoadingAccountSettings} $e');
                                     }
-                                  },
-                                  highlightKey: settingToHighlightKey,
-                                  setting: LocalSettings.accountExportSettings,
-                                  highlightedSetting: settingToHighlight,
-                                ),
-                                SettingsListTile(
-                                  icon: Icons.file_upload_rounded,
-                                  description: l10n.importLemmyAccountSettingsDescription,
-                                  widget: const SizedBox(height: 42.0, child: Icon(Icons.chevron_right_rounded)),
-                                  onTap: () async {
-                                    String importSettings;
+                                    return;
+                                  }
 
-                                    try {
-                                      final filePath = await FlutterFileDialog.pickFile(
-                                        params: const OpenFileDialogParams(
-                                          fileExtensionsFilter: ['json'],
-                                        ),
-                                      );
+                                  try {
+                                    final l10n = AppLocalizations.of(GlobalContext.context)!;
+                                    final account = context.read<ProfileBloc>().state.account;
+                                    final response = await LemmyAccountRepository(account: account).importSettings(importSettings);
 
-                                      if (filePath != null) {
-                                        importSettings = await File(filePath).readAsString();
-                                      } else {
-                                        showSnackbar(l10n.errorLoadingAccountSettings);
-                                        return;
-                                      }
-                                    } catch (e) {
-                                      if (e is FormatException) {
-                                        showSnackbar(l10n.errorParsingJson);
-                                      } else if ((e as PlatformException?)?.code == "invalid_file_extension") {
-                                        showSnackbar(l10n.youMustSelectAJsonFile);
-                                      } else {
-                                        showSnackbar('${l10n.errorLoadingAccountSettings} $e');
-                                      }
-                                      return;
+                                    if (response.success) {
+                                      showSnackbar(l10n.accountSettingsImportedSuccessfully);
+
+                                      // Reload the current page we're on to reflect changes to account settings
+                                      context.read<UserSettingsBloc>().add(const ResetUserSettingsEvent());
+                                      context.read<UserSettingsBloc>().add(const GetUserSettingsEvent());
+                                    } else {
+                                      showSnackbar(l10n.errorImportingAccountSettings);
                                     }
-
-                                    try {
-                                      final l10n = AppLocalizations.of(GlobalContext.context)!;
-                                      final account = await fetchActiveProfile();
-                                      if (account.anonymous) throw Exception(l10n.userNotLoggedIn);
-
-                                      SuccessResponse response = await LemmyClient.instance.lemmyApiV3.run(ImportSettings(auth: account.jwt, data: importSettings));
-
-                                      if (response.success) {
-                                        showSnackbar(l10n.accountSettingsImportedSuccessfully);
-
-                                        // Reload the current page we're on to reflect changes to account settings
-                                        context.read<UserSettingsBloc>().add(const ResetUserSettingsEvent());
-                                        context.read<UserSettingsBloc>().add(const GetUserSettingsEvent());
-                                      } else {
-                                        showSnackbar(l10n.errorImportingAccountSettings);
-                                      }
-                                    } catch (e) {
-                                      showSnackbar(getExceptionErrorMessage(e));
-                                    }
-                                  },
-                                  highlightKey: settingToHighlightKey,
-                                  setting: LocalSettings.accountImportSettings,
-                                  highlightedSetting: settingToHighlight,
-                                ),
-                              ],
+                                  } catch (e) {
+                                    showSnackbar(getExceptionErrorMessage(e));
+                                  }
+                                },
+                                highlightKey: settingToHighlightKey,
+                                setting: LocalSettings.accountImportSettings,
+                                highlightedSetting: settingToHighlight,
+                              ),
                               Padding(
                                 padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
                                 child: Text(l10n.dangerZone, style: theme.textTheme.titleMedium),
@@ -562,7 +552,9 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
                                     onPrimaryButtonPressed: (dialogContext, _) async {
                                       if (context.mounted) {
                                         Navigator.of(context).pop();
-                                        handleLink(context, url: "https://${LemmyClient.instance.lemmyApiV3.host}/settings");
+                                        final account = context.read<ProfileBloc>().state.account;
+
+                                        handleLink(context, url: "https://${account.instance}/settings");
                                       }
                                     },
                                     primaryButtonText: l10n.confirm,
@@ -587,7 +579,9 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
                                     onPrimaryButtonPressed: (dialogContext, _) async {
                                       if (context.mounted) {
                                         Navigator.of(context).pop();
-                                        handleLink(context, url: "https://${LemmyClient.instance.lemmyApiV3.host}/settings");
+                                        final account = context.read<ProfileBloc>().state.account;
+
+                                        handleLink(context, url: "https://${account.instance}/settings");
                                       }
                                     },
                                   );
@@ -596,19 +590,18 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
                                 setting: LocalSettings.accountDeleteAccount,
                                 highlightedSetting: settingToHighlight,
                               ),
-                              if (LemmyClient.instance.supportsFeature(LemmyFeature.listMedia))
-                                SettingsListTile(
-                                  icon: Icons.hide_image_rounded,
-                                  description: l10n.manageMedia,
-                                  widget: const SizedBox(
-                                    height: 42.0,
-                                    child: Icon(Icons.chevron_right_rounded),
-                                  ),
-                                  onTap: () => navigateToSettingPage(context, LocalSettings.settingsPageAccountMedia),
-                                  highlightKey: settingToHighlightKey,
-                                  setting: LocalSettings.accountManageMedia,
-                                  highlightedSetting: settingToHighlight,
+                              SettingsListTile(
+                                icon: Icons.hide_image_rounded,
+                                description: l10n.manageMedia,
+                                widget: const SizedBox(
+                                  height: 42.0,
+                                  child: Icon(Icons.chevron_right_rounded),
                                 ),
+                                onTap: () => navigateToSettingPage(context, LocalSettings.settingsPageAccountMedia),
+                                highlightKey: settingToHighlightKey,
+                                setting: LocalSettings.accountManageMedia,
+                                highlightedSetting: settingToHighlight,
+                              ),
                               const SizedBox(height: 100.0),
                             ],
                           ),

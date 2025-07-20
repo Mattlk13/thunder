@@ -1,10 +1,14 @@
 import 'dart:collection';
 
 import 'package:flutter/material.dart';
-import 'package:lemmy_api_client/v3.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+import 'package:thunder/account/bloc/profile_bloc.dart';
+import 'package:thunder/account/models/account.dart';
 import 'package:thunder/core/models/models.dart';
-import 'package:thunder/core/singletons/lemmy_client.dart';
+import 'package:thunder/instance/repository/instance_repository.dart';
 import 'package:thunder/instances.dart';
+import 'package:thunder/search/repository/search_repository.dart';
 import 'package:thunder/shared/pages/loading_page.dart';
 
 String? fetchInstanceNameFromUrl(String? url) {
@@ -101,14 +105,14 @@ Future<String?> getLemmyUser(String text) async {
 
 final RegExp _post = RegExp(r'^(https?:\/\/)(.*)\/post\/([0-9]*).*$');
 Future<int?> getLemmyPostId(BuildContext context, String text) async {
-  LemmyApiV3 lemmy = LemmyClient.instance.lemmyApiV3;
+  final account = context.read<ProfileBloc>().state.account;
 
   final RegExpMatch? postMatch = _post.firstMatch(text);
   if (postMatch != null) {
     final String? instance = postMatch.group(2);
     final int? postId = int.tryParse(postMatch.group(3)!);
     if (postId != null) {
-      if (instance == lemmy.host) {
+      if (instance == account.instance) {
         return postId;
       } else {
         // This is a post on another instance. Try to resolve it
@@ -116,8 +120,8 @@ Future<int?> getLemmyPostId(BuildContext context, String text) async {
           // Show the loading page while we resolve the post
           showLoadingPage(context);
 
-          final ResolveObjectResponse resolveObjectResponse = await lemmy.run(ResolveObject(q: text));
-          return resolveObjectResponse.post?.post.id;
+          final response = await LemmySearchRepository(account: account).resolve(query: text);
+          return response.post?.post.id;
         } catch (e) {
           return null;
         }
@@ -131,10 +135,10 @@ Future<int?> getLemmyPostId(BuildContext context, String text) async {
 final RegExp _comment = RegExp(r'^(https?:\/\/)(.*)\/comment\/([0-9]*).*$');
 final RegExp _commentAlternate = RegExp(r'^(https?:\/\/)(.*)\/post\/([0-9]*)\/([0-9]*).*$');
 Future<int?> getLemmyCommentId(BuildContext context, String text) async {
-  LemmyApiV3 lemmy = LemmyClient.instance.lemmyApiV3;
-
   String? instance;
   int? commentId;
+
+  final account = context.read<ProfileBloc>().state.account;
 
   // Try legacy comment link format
   RegExpMatch? commentMatch = _comment.firstMatch(text);
@@ -153,7 +157,7 @@ Future<int?> getLemmyCommentId(BuildContext context, String text) async {
   }
 
   if (commentId != null) {
-    if (instance == lemmy.host) {
+    if (instance == account.instance) {
       return commentId;
     } else {
       // This is a comment on another instance. Try to resolve it
@@ -161,8 +165,8 @@ Future<int?> getLemmyCommentId(BuildContext context, String text) async {
         // Show the loading page while we resolve the post
         showLoadingPage(context);
 
-        final ResolveObjectResponse resolveObjectResponse = await lemmy.run(ResolveObject(q: text));
-        return resolveObjectResponse.comment?.comment.id;
+        final response = await LemmySearchRepository(account: account).resolve(query: text);
+        return response.comment?.comment.id;
       } catch (e) {
         return null;
       }
@@ -180,12 +184,15 @@ Future<ThunderInstanceInfo> getInstanceInfo(String? url, {int? id, Duration? tim
   if (url?.isEmpty ?? true) return const ThunderInstanceInfo(success: false);
 
   try {
-    final site = await LemmyApiV3(url!).run(const GetSite()).timeout(timeout ?? const Duration(seconds: 5));
-    final instance = ThunderInstance(site.siteView.site, instanceView: site.siteView);
+    // Create a temporary Account for the request
+    final account = Account(instance: url!, id: '', index: -1);
+
+    final site = await LemmyInstanceRepository(account: account).getSiteInfo().timeout(timeout ?? const Duration(seconds: 5));
+    final instance = site.siteView;
 
     return ThunderInstanceInfo(
       id: id,
-      domain: fetchInstanceNameFromUrl(instance.url),
+      domain: fetchInstanceNameFromUrl(instance.actorId),
       version: site.version,
       name: instance.name,
       icon: instance.icon,
@@ -214,7 +221,9 @@ Future<bool> isLemmyInstance(String? url) async {
   }
 
   try {
-    await LemmyApiV3(url!).run(const GetSite());
+    // Create a temporary Account for the request
+    final account = Account(instance: url!, id: '', index: -1);
+    await LemmyInstanceRepository(account: account).getSiteInfo();
     // If we get here, it worked
     validInstances.add(url);
     return true;

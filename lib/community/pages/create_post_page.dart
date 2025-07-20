@@ -7,6 +7,10 @@ import 'package:flutter/material.dart';
 
 // Package imports
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:thunder/community/models/thunder_community.dart';
+import 'package:thunder/core/enums/meta_search_type.dart';
+import 'package:thunder/core/enums/post_sort_type.dart';
+import 'package:thunder/core/models/thunder_language.dart';
 import 'package:thunder/localizations/app_localizations.dart';
 import 'package:flutter_keyboard_visibility/flutter_keyboard_visibility.dart';
 import 'package:flutter_typeahead/flutter_typeahead.dart';
@@ -17,17 +21,16 @@ import 'package:markdown_editor/markdown_editor.dart';
 // Project imports
 import 'package:thunder/account/account.dart';
 import 'package:thunder/core/enums/enums.dart';
-import 'package:thunder/core/enums/post_sort_type.dart';
 import 'package:thunder/drafts/models/draft.dart';
 import 'package:thunder/community/bloc/image_bloc.dart';
 import 'package:thunder/core/enums/media_type.dart';
 import 'package:thunder/core/models/media.dart';
-import 'package:thunder/core/models/models.dart';
+import 'package:thunder/post/models/thunder_post.dart';
 import 'package:thunder/post/widgets/post_bottom_sheet/post_action_bottom_sheet.dart';
 import 'package:thunder/core/enums/view_mode.dart';
-import 'package:thunder/core/singletons/lemmy_client.dart';
 import 'package:thunder/drafts/draft_type.dart';
 import 'package:thunder/post/cubit/create_post_cubit.dart';
+import 'package:thunder/search/repository/search_repository.dart';
 import 'package:thunder/shared/avatars/community_avatar.dart';
 import 'package:thunder/shared/common_markdown_body.dart';
 import 'package:thunder/shared/cross_posts.dart';
@@ -36,6 +39,7 @@ import 'package:thunder/shared/input_dialogs.dart';
 import 'package:thunder/shared/language_selector.dart';
 import 'package:thunder/shared/media/media_view.dart';
 import 'package:thunder/shared/snackbar.dart';
+import 'package:thunder/user/models/thunder_user.dart';
 import 'package:thunder/user/utils/restore_user.dart';
 import 'package:thunder/user/widgets/user_selector.dart';
 import 'package:thunder/utils/colors.dart';
@@ -239,9 +243,9 @@ class _CreatePostPageState extends State<CreatePostPage> {
 
     // Logic for pre-populating the post with the [postView] for edits
     if (widget.post != null) {
-      _titleTextController.text = widget.post!.title;
-      _urlTextController.text = widget.post!.link ?? '';
-      _customThumbnailTextController.text = widget.post!.thumbnail ?? '';
+      _titleTextController.text = widget.post!.name;
+      _urlTextController.text = widget.post!.url ?? '';
+      _customThumbnailTextController.text = widget.post!.thumbnailUrl ?? '';
       _altTextTextController.text = widget.post!.altText ?? '';
       _bodyTextController.text = widget.post!.body ?? '';
       isNSFW = widget.post!.nsfw;
@@ -320,9 +324,9 @@ class _CreatePostPageState extends State<CreatePostPage> {
         trailingIconColor: Theme.of(context).colorScheme.errorContainer,
         trailingAction: () {
           Draft.deleteDraft(draftType, draftExistingId, draftReplyId);
-          _titleTextController.text = widget.post?.title ?? '';
-          _urlTextController.text = widget.post?.link ?? '';
-          _customThumbnailTextController.text = widget.post?.thumbnail ?? '';
+          _titleTextController.text = widget.post?.name ?? '';
+          _urlTextController.text = widget.post?.url ?? '';
+          _customThumbnailTextController.text = widget.post?.thumbnailUrl ?? '';
           _altTextTextController.text = widget.post?.altText ?? '';
           _bodyTextController.text = widget.post?.body ?? '';
         },
@@ -351,9 +355,9 @@ class _CreatePostPageState extends State<CreatePostPage> {
       return true;
     }
 
-    return draft.title != widget.post!.title ||
-        draft.url != (widget.post!.link ?? '') ||
-        draft.customThumbnail != (widget.post!.thumbnail ?? '') ||
+    return draft.title != widget.post!.name ||
+        draft.url != (widget.post!.url ?? '') ||
+        draft.customThumbnail != (widget.post!.thumbnailUrl ?? '') ||
         draft.altText != (widget.post!.altText ?? '') ||
         draft.body != (widget.post!.body ?? '');
   }
@@ -448,7 +452,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
                             const SizedBox(height: 4.0),
                             UserSelector(
                               profileModalHeading: l10n.selectAccountToPostAs,
-                              communityActorId: community?.url,
+                              communityActorId: community?.actorId,
                               onCommunityChanged: (community) {
                                 if (community == null) showSnackbar(l10n.unableToFindCommunityOnInstance);
 
@@ -530,7 +534,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
                                 ),
                               ),
                             ),
-                            if (LemmyClient.instance.supportsFeature(LemmyFeature.customThumbnail) && !isImageUrl(_urlTextController.text)) ...[
+                            if (!isImageUrl(_urlTextController.text)) ...[
                               const SizedBox(height: 10),
                               TextFormField(
                                 controller: _customThumbnailTextController,
@@ -543,7 +547,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
                                 ),
                               ),
                             ],
-                            if (LemmyClient.instance.supportsFeature(LemmyFeature.altText) && isImageUrl(_urlTextController.text)) ...[
+                            if (isImageUrl(_urlTextController.text)) ...[
                               const SizedBox(height: 10),
                               TextFormField(
                                 controller: _altTextTextController,
@@ -592,7 +596,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
                                   constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.60),
                                   child: LanguageSelector(
                                     languageId: languageId,
-                                    onLanguageSelected: (Language? language) {
+                                    onLanguageSelected: (ThunderLanguage? language) {
                                       setState(() => languageId = language?.id);
                                     },
                                   ),
@@ -668,18 +672,18 @@ class _CreatePostPageState extends State<CreatePostPage> {
                               ],
                               customTapActions: {
                                 MarkdownType.username: () {
-                                  showUserInputDialog(context, title: l10n.username, onUserSelected: (user) {
+                                  showUserInputDialog(context, title: l10n.username, onUserSelected: (ThunderUser user) {
                                     _bodyTextController.text = _bodyTextController.text.replaceRange(
                                       _bodyTextController.selection.end,
                                       _bodyTextController.selection.end,
-                                      '[@${user.username}@${fetchInstanceNameFromUrl(user.url)}](${user.url})',
+                                      '[@${user.name}@${fetchInstanceNameFromUrl(user.actorId)}](${user.actorId})',
                                     );
                                   });
                                 },
                                 MarkdownType.community: () {
                                   showCommunityInputDialog(context, title: l10n.community, onCommunitySelected: (community) {
                                     _bodyTextController.text = _bodyTextController.text
-                                        .replaceRange(_bodyTextController.selection.end, _bodyTextController.selection.end, '!${community.name}@${fetchInstanceNameFromUrl(community.url)}');
+                                        .replaceRange(_bodyTextController.selection.end, _bodyTextController.selection.end, '!${community.name}@${fetchInstanceNameFromUrl(community.actorId)}');
                                   });
                                 },
                               },
@@ -757,24 +761,23 @@ class _CreatePostPageState extends State<CreatePostPage> {
     SearchResponse? searchResponse;
     if (url == text) {
       try {
-        // Fetch cross-posts
-        final account = await fetchActiveProfile();
+        final account = context.read<ProfileBloc>().state.account;
 
-        searchResponse = await LemmyClient.instance.lemmyApiV3.run(Search(
-          q: url,
-          type: SearchType.url,
-          sort: PostSortType.topAll.toLemmyType(),
-          listingType: FeedListType.all.toLemmyType(),
+        // Fetch cross-posts
+        searchResponse = await LemmySearchRepository(account: account).search(
+          query: url,
+          type: MetaSearchType.url,
+          sort: PostSortType.topAll,
+          listingType: FeedListType.all,
           limit: 20,
-          auth: account.jwt,
-        ));
+        );
       } catch (e) {
         // Ignore
       }
     }
 
     setState(() {
-      crossPosts = searchResponse?.posts.map((pv) => ThunderPost(pv.post, postView: pv)).toList() ?? [];
+      crossPosts = searchResponse?.posts.map((pv) => ThunderPost.fromLemmyPostView(pv.toJson())).toList() ?? [];
     });
   }
 
@@ -876,7 +879,7 @@ class _CommunitySelectorState extends State<CommunitySelector> {
                               context,
                               widget.community!.name,
                               widget.community!.title,
-                              fetchInstanceNameFromUrl(widget.community!.url),
+                              fetchInstanceNameFromUrl(widget.community!.actorId),
                               // Override, because we have the display name right above
                               useDisplayName: false,
                             )

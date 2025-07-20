@@ -5,8 +5,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:thunder/account/account.dart';
 import 'package:thunder/comment/comment.dart';
+import 'package:thunder/comment/models/thunder_comment.dart';
 import 'package:thunder/core/enums/nested_comment_indicator.dart';
-import 'package:thunder/core/models/models.dart';
 import 'package:thunder/utils/global_context.dart';
 import 'package:thunder/utils/navigation.dart';
 import 'package:thunder/core/enums/swipe_action.dart';
@@ -97,7 +97,7 @@ class _CommentCardState extends State<CommentCard> {
     assert(widget.comment.creator != null, 'Comment must have a creator');
 
     // Checks for the same creator id to user id
-    final bool isOwnComment = widget.comment.creator!.id == context.read<ProfileBloc>().state.account?.userId;
+    final bool isOwnComment = widget.comment.creator!.id == context.read<ProfileBloc>().state.account.userId;
     final bool isUserLoggedIn = context.read<ProfileBloc>().state.isLoggedIn;
 
     final int commentId = widget.comment.id;

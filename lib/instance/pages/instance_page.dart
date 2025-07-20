@@ -1,19 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lemmy_api_client/v3.dart';
+
 import 'package:thunder/account/account.dart';
 import 'package:thunder/comment/comment.dart';
 import 'package:thunder/community/widgets/community_list_entry.dart';
 import 'package:thunder/core/enums/post_sort_type.dart';
 import 'package:thunder/core/models/models.dart';
-import 'package:thunder/core/singletons/lemmy_client.dart';
 import 'package:thunder/feed/bloc/feed_bloc.dart';
 import 'package:thunder/feed/widgets/feed_post_card_list.dart';
 import 'package:thunder/instance/bloc/instance_bloc.dart';
 import 'package:thunder/instance/cubit/instance_page_cubit.dart';
 import 'package:thunder/instance/enums/instance_action.dart';
 import 'package:thunder/instance/widgets/instance_view.dart';
+import 'package:thunder/user/models/thunder_user.dart';
 import 'package:thunder/utils/constants.dart';
 import 'package:thunder/utils/navigation.dart';
 import 'package:thunder/shared/chips/thunder_action_chip.dart';
@@ -30,7 +32,7 @@ import 'package:thunder/localizations/app_localizations.dart';
 import 'package:thunder/utils/numbers.dart';
 
 class InstancePage extends StatefulWidget {
-  final GetSiteResponse getSiteResponse;
+  final ThunderSiteResponse getSiteResponse;
   final bool? isBlocked;
 
   // This is needed (in addition to Site) specifically for blocking.
@@ -79,10 +81,12 @@ class _InstancePageState extends State<InstancePage> {
     final bool tabletMode = context.read<ThunderBloc>().state.tabletMode;
 
     final bool isUserLoggedIn = context.read<ProfileBloc>().state.isLoggedIn;
-    final String? accountInstance = context.read<ProfileBloc>().state.account?.instance;
+    final String accountInstance = context.read<ProfileBloc>().state.account.instance;
     final String? currentAnonymousInstance = context.read<ThunderBloc>().state.currentAnonymousInstance;
 
     final chipColor = theme.colorScheme.primaryContainer.withValues(alpha: 0.25);
+
+    final account = context.select<ProfileBloc, Account>((bloc) => bloc.state.account);
 
     return BlocListener<InstanceBloc, InstanceState>(
       listener: (context, state) {
@@ -101,12 +105,19 @@ class _InstancePageState extends State<InstancePage> {
         providers: [
           BlocProvider.value(
             value: InstancePageCubit(
-              instance: fetchInstanceNameFromUrl(widget.getSiteResponse.siteView.site.actorId)!,
+              instance: fetchInstanceNameFromUrl(widget.getSiteResponse.siteView.actorId)!,
               resolutionInstance: (isUserLoggedIn ? accountInstance : currentAnonymousInstance)!,
+              account: account,
             ),
           ),
           BlocProvider.value(
-            value: FeedBloc(lemmyClient: LemmyClient()..changeBaseUrl(fetchInstanceNameFromUrl(widget.getSiteResponse.siteView.site.actorId)!)),
+            value: FeedBloc(
+              account: Account(
+                id: '',
+                instance: fetchInstanceNameFromUrl(widget.getSiteResponse.siteView.actorId)!,
+                index: -1,
+              ),
+            ),
           ),
         ],
         child: BlocConsumer<InstancePageCubit, InstancePageState>(
@@ -128,17 +139,17 @@ class _InstancePageState extends State<InstancePage> {
                         toolbarHeight: APP_BAR_HEIGHT,
                         title: ListTile(
                           title: Text(
-                            fetchInstanceNameFromUrl(widget.getSiteResponse.siteView.site.actorId) ?? '',
+                            fetchInstanceNameFromUrl(widget.getSiteResponse.siteView.actorId) ?? '',
                             overflow: TextOverflow.fade,
                             maxLines: 1,
                             softWrap: false,
                             style: theme.textTheme.titleLarge,
                           ),
-                          subtitle: Text("v${widget.getSiteResponse.version} · ${l10n.countUsers(formatLongNumber(widget.getSiteResponse.siteView.counts.users))}"),
+                          subtitle: Text("v${widget.getSiteResponse.version} · ${l10n.countUsers(formatLongNumber(widget.getSiteResponse.siteView.users ?? 0))}"),
                           contentPadding: const EdgeInsets.symmetric(horizontal: 0),
                         ),
                         actions: [
-                          if (LemmyClient.instance.supportsFeature(LemmyFeature.blockInstance) && widget.instanceId != null)
+                          if (widget.instanceId != null)
                             IconButton(
                               tooltip: isBlocked! ? l10n.unblockInstance : l10n.blockInstance,
                               onPressed: () {
@@ -146,7 +157,7 @@ class _InstancePageState extends State<InstancePage> {
                                 context.read<InstanceBloc>().add(InstanceActionEvent(
                                       instanceAction: InstanceAction.block,
                                       instanceId: widget.instanceId!,
-                                      domain: fetchInstanceNameFromUrl(widget.getSiteResponse.siteView.site.actorId),
+                                      domain: fetchInstanceNameFromUrl(widget.getSiteResponse.siteView.actorId),
                                       value: !isBlocked!,
                                     ));
                               },
@@ -158,7 +169,7 @@ class _InstancePageState extends State<InstancePage> {
                           if (viewType == SearchType.all)
                             IconButton(
                               tooltip: l10n.openInBrowser,
-                              onPressed: () => handleLink(context, url: widget.getSiteResponse.siteView.site.actorId),
+                              onPressed: () => handleLink(context, url: widget.getSiteResponse.siteView.actorId),
                               icon: Icon(
                                 Icons.open_in_browser_rounded,
                                 semanticLabel: l10n.openInBrowser,
@@ -181,7 +192,6 @@ class _InstancePageState extends State<InstancePage> {
                                       _doLoad(context);
                                     },
                                     previouslySelected: postSortType,
-                                    minimumVersion: LemmyClient.instance.version,
                                   ),
                                 );
                               },
@@ -193,11 +203,9 @@ class _InstancePageState extends State<InstancePage> {
                                 ThunderPopupMenuItem(
                                   onTap: () async {
                                     HapticFeedback.mediumImpact();
-                                    FeedBloc feedBloc = context.read<FeedBloc>();
                                     navigateToModlogPage(
                                       context,
-                                      lemmyClient: feedBloc.lemmyClient,
-                                      subtitle: fetchInstanceNameFromUrl(widget.getSiteResponse.siteView.site.actorId) ?? '',
+                                      subtitle: fetchInstanceNameFromUrl(widget.getSiteResponse.siteView.actorId) ?? '',
                                     );
                                   },
                                   icon: Icons.shield_rounded,
@@ -205,7 +213,7 @@ class _InstancePageState extends State<InstancePage> {
                                 ),
                                 if (viewType != SearchType.all)
                                   ThunderPopupMenuItem(
-                                    onTap: () => handleLink(context, url: widget.getSiteResponse.siteView.site.actorId),
+                                    onTap: () => handleLink(context, url: widget.getSiteResponse.siteView.actorId),
                                     icon: Icons.open_in_browser_rounded,
                                     title: l10n.openInBrowser,
                                   ),
@@ -301,7 +309,7 @@ class _InstancePageState extends State<InstancePage> {
                             child: Padding(
                               padding: const EdgeInsets.all(20),
                               child: Material(
-                                child: InstanceView(site: ThunderInstance(widget.getSiteResponse.siteView.site)),
+                                child: InstanceView(site: widget.getSiteResponse.siteView),
                               ),
                             ),
                           ),
@@ -328,7 +336,7 @@ class _InstancePageState extends State<InstancePage> {
                                 return Material(
                                   child: user != null
                                       ? UserListEntry(
-                                          user: ThunderUser(user.person, userView: user),
+                                          user: ThunderUser.fromLemmyUserView(user.toJson()),
                                           resolutionInstance: state.resolutionInstance,
                                         )
                                       : Container(),

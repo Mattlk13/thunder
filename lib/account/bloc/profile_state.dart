@@ -14,11 +14,11 @@ class ProfileState extends Equatable {
 
   final bool isLoggedIn;
 
-  final Account? account;
+  final Account account;
 
   final bool downvotesEnabled;
 
-  final GetSiteResponse? getSiteResponse;
+  final ThunderSiteResponse? siteResponse;
 
   final String? contentWarning;
 
@@ -43,9 +43,9 @@ class ProfileState extends Equatable {
   const ProfileState({
     this.status = ProfileStatus.initial,
     this.isLoggedIn = false,
-    this.account,
+    required this.account,
     this.downvotesEnabled = true,
-    this.getSiteResponse,
+    this.siteResponse,
     this.contentWarning,
     this.subscriptions = const [],
     this.favorites = const [],
@@ -60,7 +60,7 @@ class ProfileState extends Equatable {
     bool? isLoggedIn,
     ValueGetter<Account>? account,
     bool? downvotesEnabled,
-    ValueGetter<GetSiteResponse>? getSiteResponse,
+    ValueGetter<ThunderSiteResponse>? siteResponse,
     ValueGetter<String>? contentWarning,
     ValueGetter<ThunderUser>? user,
     List<ThunderCommunity>? subscriptions,
@@ -74,7 +74,7 @@ class ProfileState extends Equatable {
       isLoggedIn: isLoggedIn ?? this.isLoggedIn,
       account: account != null ? account() : this.account,
       downvotesEnabled: downvotesEnabled ?? this.downvotesEnabled,
-      getSiteResponse: getSiteResponse != null ? getSiteResponse() : this.getSiteResponse,
+      siteResponse: siteResponse != null ? siteResponse() : this.siteResponse,
       contentWarning: contentWarning != null ? contentWarning() : this.contentWarning,
       user: user != null ? user() : this.user,
       subscriptions: subscriptions ?? this.subscriptions,
@@ -91,7 +91,7 @@ class ProfileState extends Equatable {
         isLoggedIn,
         account,
         downvotesEnabled,
-        getSiteResponse,
+        siteResponse,
         reload,
         status,
         user,
