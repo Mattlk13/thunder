@@ -30,8 +30,8 @@ class UserBloc extends Bloc<UserEvent, UserState> {
   late UserRepository userRepository;
 
   UserBloc({required this.account}) : super(const UserState()) {
-    communityRepository = LemmyCommunityRepository(account: account);
-    userRepository = LemmyUserRepository(account: account);
+    communityRepository = CommunityRepositoryImpl(account: account);
+    userRepository = UserRepositoryImpl(account: account);
 
     /// Handles clearing any messages from the state
     on<UserClearMessageEvent>(

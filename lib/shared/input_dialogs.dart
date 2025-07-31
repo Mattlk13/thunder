@@ -45,8 +45,8 @@ void showUserInputDialog(BuildContext context, {required String title, required 
       if (normalizedUsername != null) {
         try {
           final account = context.read<ProfileBloc>().state.account;
-          final response = await LemmyUserRepository(account: account).getUser(username: normalizedUsername);
-          final user = ThunderUser.fromLemmyUserView(response!.personView.toJson());
+          final response = await UserRepositoryImpl(account: account).getUser(username: normalizedUsername);
+          final user = response!['user'];
 
           onUserSelected(user);
           Navigator.of(context).pop();
@@ -74,14 +74,13 @@ Future<List<ThunderUser>> getUserSuggestions(BuildContext context, String query)
   if (query.isNotEmpty != true) return [];
 
   final account = context.read<ProfileBloc>().state.account;
-  final response = await LemmySearchRepository(account: account).search(
+  final response = await SearchRepositoryImpl(account: account).search(
     query: query,
     type: MetaSearchType.users,
     limit: 20,
   );
 
-  final users = response.users.map((pv) => ThunderUser.fromLemmyUserView(pv.toJson())).toList();
-  return users;
+  return response['users'];
 }
 
 Widget buildUserSuggestionWidget(BuildContext context, ThunderUser payload, {void Function(ThunderUser)? onSelected}) {
@@ -142,7 +141,7 @@ void showCommunityInputDialog(BuildContext context, {required String title, requ
       if (normalizedCommunity != null) {
         try {
           final account = context.read<ProfileBloc>().state.account;
-          final response = await LemmyCommunityRepository(account: account).getCommunity(name: normalizedCommunity);
+          final response = await CommunityRepositoryImpl(account: account).getCommunity(name: normalizedCommunity);
           final community = response['community'];
 
           onCommunitySelected(community);
@@ -171,7 +170,7 @@ Future<List<ThunderCommunity>> getCommunitySuggestions(BuildContext context, Str
   if (query.isNotEmpty != true) return emptySuggestions ?? [];
 
   final account = context.read<ProfileBloc>().state.account;
-  final response = await LemmySearchRepository(account: account).search(
+  final response = await SearchRepositoryImpl(account: account).search(
     query: query,
     type: MetaSearchType.communities,
     limit: 20,
@@ -188,14 +187,11 @@ Future<List<ThunderCommunity>> getCommunitySuggestions(BuildContext context, Str
     }
   }
 
-  final communities = response.communities.map((cv) => ThunderCommunity.fromLemmyCommunityView(cv.toJson())).toList();
-  return prioritizeFavorites(communities, favorites) ?? [];
+  return prioritizeFavorites(response['communities'], favorites) ?? [];
 }
 
 Widget buildCommunitySuggestionWidget(BuildContext context, ThunderCommunity payload, {void Function(ThunderCommunity)? onSelected}) {
   final l10n = AppLocalizations.of(context)!;
-
-  assert(payload.subscribers != null);
 
   return Tooltip(
     message: generateCommunityFullName(
@@ -230,10 +226,12 @@ Widget buildCommunitySuggestionWidget(BuildContext context, ThunderCommunity pay
               ),
               Row(
                 children: [
-                  const Icon(Icons.people_rounded, size: 16),
-                  const SizedBox(width: 5),
-                  Text(formatNumberToK(payload.subscribers ?? -1)),
-                  if (payload.subscribed != SubscriptionStatus.notSubscribed) ...[
+                  if (payload.subscribers != null) ...[
+                    const Icon(Icons.people_rounded, size: 16),
+                    const SizedBox(width: 5),
+                    Text(formatNumberToK(payload.subscribers ?? -1)),
+                  ],
+                  if (payload.subscribed != null) ...[
                     Text(' · ${switch (payload.subscribed) {
                       SubscriptionStatus.pending => l10n.pending,
                       SubscriptionStatus.subscribed => l10n.subscribed,
@@ -270,7 +268,7 @@ void showInstanceInputDialog(
 }) async {
   Account? account = await fetchActiveProfile();
 
-  final getFederatedInstancesResponse = await LemmyInstanceRepository(account: account).federated();
+  final getFederatedInstancesResponse = await InstanceRepositoryImpl(account: account).federated();
 
   Future<String?> onSubmitted({InstanceWithFederationState? payload, String? value}) async {
     if (payload != null) {

@@ -1,7 +1,8 @@
+import 'package:flutter/material.dart';
+
 import 'package:bloc/bloc.dart';
 import 'package:bloc_concurrency/bloc_concurrency.dart';
 import 'package:equatable/equatable.dart';
-import 'package:lemmy_api_client/v3.dart';
 import 'package:stream_transform/stream_transform.dart';
 
 import 'package:thunder/account/models/account.dart';
@@ -41,9 +42,9 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
   late UserRepository userRepository;
 
   FeedBloc({required this.account}) : super(const FeedState()) {
-    postRepository = LemmyPostRepository(account: account);
-    communityRepository = LemmyCommunityRepository(account: account);
-    userRepository = LemmyUserRepository(account: account);
+    postRepository = PostRepositoryImpl(account: account);
+    communityRepository = CommunityRepositoryImpl(account: account);
+    userRepository = UserRepositoryImpl(account: account);
 
     /// Handles resetting the feed to its initial state
     on<ResetFeedEvent>(
@@ -458,7 +459,8 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
         currentPage: 1,
         userId: state.userId,
         username: state.username,
-        fullPersonView: state.fullPersonView,
+        user: state.user,
+        userModerates: state.userModerates,
       ));
 
       return;
@@ -476,7 +478,8 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
       community: null,
       communityInstance: null,
       communityModerators: [],
-      fullPersonView: null,
+      user: null,
+      userModerates: [],
       communityId: null,
       communityName: null,
       userId: null,
@@ -502,156 +505,165 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
 
   /// Fetches the posts, community information, and user information for the feed
   Future<void> _onFeedFetched(FeedFetchedEvent event, Emitter<FeedState> emit) async {
-    // Assert any requirements
-    if (event.reset) assert(event.feedType != null);
-    if (event.reset && event.feedType == FeedType.community) assert(!(event.communityId == null && event.communityName == null));
-    if (event.reset && event.feedType == FeedType.user) assert(!(event.userId != null && event.username != null));
-    if (event.reset && event.feedType == FeedType.general) assert(event.feedListType != null);
+    try {
+      // Assert any requirements
+      if (event.reset) assert(event.feedType != null);
+      if (event.reset && event.feedType == FeedType.community) assert(!(event.communityId == null && event.communityName == null));
+      if (event.reset && event.feedType == FeedType.user) assert(!(event.userId != null && event.username != null));
+      if (event.reset && event.feedType == FeedType.general) assert(event.feedListType != null);
 
-    // Handle the initial fetch or reload of a feed
-    if (event.reset) {
-      if (state.status != FeedStatus.initial) add(ResetFeedEvent(softReset: event.feedType == FeedType.account));
+      // Handle the initial fetch or reload of a feed
+      if (event.reset) {
+        if (state.status != FeedStatus.initial) add(ResetFeedEvent(softReset: event.feedType == FeedType.account));
 
-      ThunderCommunity? community;
-      ThunderSite? communityInstance;
-      List<ThunderUser> communityModerators = [];
+        ThunderCommunity? community;
+        ThunderSite? communityInstance;
+        List<ThunderUser> communityModerators = [];
 
-      GetPersonDetailsResponse? fullPersonView;
+        ThunderUser? user;
+        List<ThunderCommunity> userModerates = [];
 
-      switch (event.feedType) {
-        case FeedType.community:
-          // Fetch community information
-          try {
-            final result = await communityRepository.getCommunity(id: event.communityId, name: event.communityName);
-            community = result['community'];
-            communityInstance = result['instance'];
-            communityModerators = result['moderators'];
-          } catch (e) {
-            // If we are given a community feed, but we can't load the community, that's a problem! Emit an error.
-            return emit(state.copyWith(
-              status: FeedStatus.failureLoadingCommunity,
-              message: getExceptionErrorMessage(e, additionalInfo: event.communityName),
-              feedType: event.feedType,
-            ));
-          }
-          break;
-        case FeedType.user:
-        case FeedType.account:
-          // Fetch user information
-          try {
-            fullPersonView = await userRepository.getUser(userId: event.userId, username: event.username);
-          } catch (e) {
-            // If we are given a user feed, but we can't load the user, that's a problem! Emit an error.
-            return emit(state.copyWith(
-              status: FeedStatus.failureLoadingUser,
-              message: getExceptionErrorMessage(e, additionalInfo: event.username),
-              feedType: event.feedType,
-            ));
-          }
-          break;
-        case FeedType.general:
-          break;
-        default:
-          break;
+        switch (event.feedType) {
+          case FeedType.community:
+            // Fetch community information
+            try {
+              final result = await communityRepository.getCommunity(id: event.communityId, name: event.communityName);
+              community = result['community'];
+              communityInstance = result['instance'];
+              communityModerators = result['moderators'];
+            } catch (e) {
+              // If we are given a community feed, but we can't load the community, that's a problem! Emit an error.
+              return emit(state.copyWith(
+                status: FeedStatus.failureLoadingCommunity,
+                message: getExceptionErrorMessage(e, additionalInfo: event.communityName),
+                feedType: event.feedType,
+              ));
+            }
+            break;
+          case FeedType.user:
+          case FeedType.account:
+            // Fetch user information
+            try {
+              final response = await userRepository.getUser(userId: event.userId, username: event.username);
+              user = response!['user'];
+              userModerates = response['moderates'];
+            } catch (e) {
+              // If we are given a user feed, but we can't load the user, that's a problem! Emit an error.
+              return emit(state.copyWith(
+                status: FeedStatus.failureLoadingUser,
+                message: getExceptionErrorMessage(e, additionalInfo: event.username),
+                feedType: event.feedType,
+              ));
+            }
+            break;
+          case FeedType.general:
+            break;
+          default:
+            break;
+        }
+
+        Map<String, dynamic> feedItemResult = await fetchFeedItems(
+          page: 1,
+          feedListType: event.feedListType,
+          postSortType: event.postSortType,
+          communityId: event.communityId,
+          communityName: event.communityName,
+          userId: event.userId ?? user?.id,
+          username: event.username,
+          feedTypeSubview: event.feedTypeSubview,
+          showHidden: event.showHidden,
+          showSaved: event.showSaved,
+          notifyExcessiveApiCalls: () => emit(state.copyWith(excessivesApiCalls: true)),
+        );
+
+        // Extract information from the response
+        List<ThunderPost> posts = feedItemResult['posts'];
+        List<ThunderComment> comments = feedItemResult['comments'];
+        bool hasReachedPostsEnd = feedItemResult['hasReachedPostsEnd'];
+        bool hasReachedCommentsEnd = feedItemResult['hasReachedCommentsEnd'];
+        int currentPage = feedItemResult['currentPage'];
+
+        return emit(state.copyWith(
+          status: FeedStatus.success,
+          posts: posts,
+          comments: comments,
+          hasReachedPostsEnd: hasReachedPostsEnd,
+          hasReachedCommentsEnd: hasReachedCommentsEnd,
+          feedType: event.feedType,
+          feedListType: event.feedListType,
+          postSortType: event.postSortType,
+          community: community,
+          communityInstance: communityInstance,
+          communityModerators: communityModerators,
+          user: user,
+          userModerates: userModerates,
+          communityId: event.communityId,
+          communityName: event.communityName,
+          userId: event.userId ?? user?.id,
+          username: event.username,
+          currentPage: currentPage,
+          showHidden: event.showHidden,
+          showSaved: event.showSaved,
+        ));
       }
 
+      // If the feed is already being fetched but it is not a reset, then just wait
+      if (state.status == FeedStatus.fetching) return;
+
+      // Handle fetching the next page of the feed
+      emit(state.copyWith(status: FeedStatus.fetching));
+
+      List<ThunderPost> posts = List.from(state.posts);
+      List<ThunderComment> comments = List.from(state.comments);
+
       Map<String, dynamic> feedItemResult = await fetchFeedItems(
-        page: 1,
-        feedListType: event.feedListType,
-        postSortType: event.postSortType,
-        communityId: event.communityId,
-        communityName: event.communityName,
-        userId: event.userId ?? fullPersonView?.personView.person.id,
-        username: event.username,
+        page: state.currentPage,
+        feedListType: state.feedListType,
+        postSortType: state.postSortType,
+        communityId: state.communityId,
+        communityName: state.communityName,
+        userId: state.userId,
+        username: state.username,
         feedTypeSubview: event.feedTypeSubview,
-        showHidden: event.showHidden,
-        showSaved: event.showSaved,
-        notifyExcessiveApiCalls: () => emit(state.copyWith(excessivesApiCalls: true)),
+        showHidden: state.showHidden,
+        showSaved: state.showSaved,
       );
 
       // Extract information from the response
-      List<ThunderPost> posts = feedItemResult['posts'];
-      List<ThunderComment> comments = feedItemResult['comments'];
+      List<ThunderPost> newPosts = feedItemResult['posts'];
+      List<ThunderComment> newComments = feedItemResult['comments'];
       bool hasReachedPostsEnd = feedItemResult['hasReachedPostsEnd'];
       bool hasReachedCommentsEnd = feedItemResult['hasReachedCommentsEnd'];
       int currentPage = feedItemResult['currentPage'];
 
+      Set<int> newInsertedPostIds = Set.from(state.insertedPostIds);
+      List<ThunderPost> filteredPosts = [];
+
+      // Ensure we don't add existing posts to view
+      for (ThunderPost post in newPosts) {
+        int id = post.id;
+        if (!newInsertedPostIds.contains(id)) {
+          newInsertedPostIds.add(id);
+          filteredPosts.add(post);
+        }
+      }
+
+      posts.addAll(filteredPosts);
+      comments.addAll(newComments);
+
       return emit(state.copyWith(
         status: FeedStatus.success,
+        insertedPostIds: newInsertedPostIds.toList(),
         posts: posts,
         comments: comments,
         hasReachedPostsEnd: hasReachedPostsEnd,
         hasReachedCommentsEnd: hasReachedCommentsEnd,
-        feedType: event.feedType,
-        feedListType: event.feedListType,
-        postSortType: event.postSortType,
-        community: community,
-        communityInstance: communityInstance,
-        communityModerators: communityModerators,
-        fullPersonView: fullPersonView,
-        communityId: event.communityId,
-        communityName: event.communityName,
-        userId: event.userId ?? fullPersonView?.personView.person.id,
-        username: event.username,
         currentPage: currentPage,
-        showHidden: event.showHidden,
-        showSaved: event.showSaved,
       ));
+    } catch (e) {
+      debugPrint('Error fetching feed: $e');
+      return emit(state.copyWith(status: FeedStatus.failure, message: e.toString()));
     }
-
-    // If the feed is already being fetched but it is not a reset, then just wait
-    if (state.status == FeedStatus.fetching) return;
-
-    // Handle fetching the next page of the feed
-    emit(state.copyWith(status: FeedStatus.fetching));
-
-    List<ThunderPost> posts = List.from(state.posts);
-    List<ThunderComment> comments = List.from(state.comments);
-
-    Map<String, dynamic> feedItemResult = await fetchFeedItems(
-      page: state.currentPage,
-      feedListType: state.feedListType,
-      postSortType: state.postSortType,
-      communityId: state.communityId,
-      communityName: state.communityName,
-      userId: state.userId,
-      username: state.username,
-      feedTypeSubview: event.feedTypeSubview,
-      showHidden: state.showHidden,
-      showSaved: state.showSaved,
-    );
-
-    // Extract information from the response
-    List<ThunderPost> newPosts = feedItemResult['posts'];
-    List<ThunderComment> newComments = feedItemResult['comments'];
-    bool hasReachedPostsEnd = feedItemResult['hasReachedPostsEnd'];
-    bool hasReachedCommentsEnd = feedItemResult['hasReachedCommentsEnd'];
-    int currentPage = feedItemResult['currentPage'];
-
-    Set<int> newInsertedPostIds = Set.from(state.insertedPostIds);
-    List<ThunderPost> filteredPosts = [];
-
-    // Ensure we don't add existing posts to view
-    for (ThunderPost post in newPosts) {
-      int id = post.id;
-      if (!newInsertedPostIds.contains(id)) {
-        newInsertedPostIds.add(id);
-        filteredPosts.add(post);
-      }
-    }
-
-    posts.addAll(filteredPosts);
-    comments.addAll(newComments);
-
-    return emit(state.copyWith(
-      status: FeedStatus.success,
-      insertedPostIds: newInsertedPostIds.toList(),
-      posts: posts,
-      comments: comments,
-      hasReachedPostsEnd: hasReachedPostsEnd,
-      hasReachedCommentsEnd: hasReachedCommentsEnd,
-      currentPage: currentPage,
-    ));
   }
 
   /// This function is used to create a post. We can pass in a communityId directly to determine the community to post to.
