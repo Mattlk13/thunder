@@ -27,7 +27,7 @@ class CommunityBloc extends Bloc<CommunityEvent, CommunityState> {
   late CommunityRepository communityRepository;
 
   CommunityBloc({required this.account}) : super(const CommunityState()) {
-    communityRepository = LemmyCommunityRepository(account: account);
+    communityRepository = CommunityRepositoryImpl(account: account);
 
     /// Handles clearing any messages from the state
     on<CommunityClearMessageEvent>(
@@ -56,13 +56,12 @@ class CommunityBloc extends Bloc<CommunityEvent, CommunityState> {
     switch (event.communityAction) {
       case CommunityAction.block:
         try {
-          final response = await communityRepository.block(event.communityId, event.value);
-          final community = ThunderCommunity.fromLemmyCommunityView(response.communityView.toJson());
+          final community = await communityRepository.block(event.communityId, event.value);
 
           emit(state.copyWith(
             status: CommunityStatus.success,
             community: community,
-            message: response.blocked ? l10n.successfullyBlockedCommunity(community.name) : l10n.successfullyUnblockedCommunity(community.name),
+            message: community.blocked == true ? l10n.successfullyBlockedCommunity(community.name) : l10n.successfullyUnblockedCommunity(community.name),
           ));
         } catch (e) {
           return emit(state.copyWith(status: CommunityStatus.failure));
