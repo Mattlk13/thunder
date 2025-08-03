@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:thunder/localizations/app_localizations.dart';
 
+import 'package:thunder/account/bloc/profile_bloc.dart';
+import 'package:thunder/localizations/app_localizations.dart';
 import 'package:thunder/core/enums/full_name.dart';
 import 'package:thunder/community/models/thunder_community.dart';
 import 'package:thunder/feed/view/feed_page.dart';
@@ -189,6 +190,7 @@ class _UserSettingsBlockPageState extends State<UserSettingsBlockPage> with Sing
               showUserInputDialog(
                 context,
                 title: l10n.blockUser,
+                account: context.read<ProfileBloc>().state.account,
                 onUserSelected: (user) {
                   context.read<UserSettingsBloc>().add(UnblockPersonEvent(personId: user.id, unblock: false));
                 },
@@ -198,6 +200,7 @@ class _UserSettingsBlockPageState extends State<UserSettingsBlockPage> with Sing
               showCommunityInputDialog(
                 context,
                 title: l10n.blockCommunity,
+                account: context.read<ProfileBloc>().state.account,
                 onCommunitySelected: (ThunderCommunity community) {
                   context.read<UserSettingsBloc>().add(UnblockCommunityEvent(communityId: community.id, unblock: false));
                 },
