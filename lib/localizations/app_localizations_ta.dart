@@ -56,12 +56,12 @@ class AppLocalizationsTa extends AppLocalizations {
 
   @override
   String accountSwitchParentCommentNotFound(Object instance) {
-    return 'தேர்ந்தெடுக்கப்பட்ட கருத்து \'$instance\' இல் காணப்படவில்லை. முந்தைய கணக்கிற்கு மாறுகிறது.';
+    return 'தேர்ந்தெடுக்கப்பட்ட கருத்து \'$instance\' இல் காணப்படவில்லை';
   }
 
   @override
   String accountSwitchPostNotFound(Object instance) {
-    return 'தேர்ந்தெடுக்கப்பட்ட இடுகை \'$instance\' இல் காணப்படவில்லை. முந்தைய கணக்கிற்கு மாறுகிறது.';
+    return 'தேர்ந்தெடுக்கப்பட்ட இடுகை \'$instance\' இல் காணப்படவில்லை';
   }
 
   @override
@@ -102,7 +102,7 @@ class AppLocalizationsTa extends AppLocalizations {
   String get addKeywordFilter => 'முக்கிய சொல்லைச் சேர்க்கவும்';
 
   @override
-  String get addOriginalPostBody => 'Add original post body?';
+  String get addOriginalPostBody => 'அசல் இடுகை உடலைச் சேர்க்கவா?';
 
   @override
   String get addToFavorites => 'பிடித்தவைகளில் சேர்க்கவும்';
@@ -227,7 +227,7 @@ class AppLocalizationsTa extends AppLocalizations {
   String get base => 'காரம்';
 
   @override
-  String get block => 'Block';
+  String get block => 'தொகுதி';
 
   @override
   String get blockCommunity => 'தொகுதி சமூகம்';
@@ -898,7 +898,7 @@ class AppLocalizationsTa extends AppLocalizations {
       'அமைப்புகளை இறக்குமதி செய்வதில் பிழை ஏற்பட்டது. கோப்பு சரியான வடிவத்தில் இருக்காது.';
 
   @override
-  String get errorInitializingClient => 'Error initializing client';
+  String get errorInitializingClient => 'கிளையண்டை துவக்குவதில் பிழை';
 
   @override
   String get errorLoadingAccountSettings =>
@@ -912,7 +912,7 @@ class AppLocalizationsTa extends AppLocalizations {
       'பதிலை படிக்காதது எனக் குறிக்கும் பிழை ஏற்பட்டது.';
 
   @override
-  String get errorNoActiveInstance => 'No active instance found';
+  String get errorNoActiveInstance => 'செயலில் நிகழ்வு எதுவும் கிடைக்கவில்லை';
 
   @override
   String get errorParsingJson =>
@@ -1015,7 +1015,7 @@ class AppLocalizationsTa extends AppLocalizations {
       'அறிவிப்பு அமைப்புகளைப் புதுப்பிக்கத் தவறிவிட்டது';
 
   @override
-  String get favorite => 'Favorite';
+  String get favorite => 'பிடித்த';
 
   @override
   String get favorites => 'பிடித்தவை';
@@ -1261,7 +1261,7 @@ class AppLocalizationsTa extends AppLocalizations {
       'நீங்கள் இணையத்துடன் இணைக்கப்படாமல் இருக்கலாம், அல்லது உங்கள் நிகழ்வு தற்போது கிடைக்காமல் இருக்கலாம்.';
 
   @override
-  String get invalidUrl => 'Invalid URL format';
+  String get invalidUrl => 'தவறான முகவரி வடிவம்';
 
   @override
   String joined(Object x) {
@@ -1668,7 +1668,7 @@ class AppLocalizationsTa extends AppLocalizations {
 
   @override
   String get noVisibleComments =>
-      'Comments may not be visible because the community is blocked.';
+      'சமூகம் தடுக்கப்பட்டிருப்பதால் கருத்துகள் தெரியவில்லை.';
 
   @override
   String get none => 'எதுவுமில்லை';
@@ -1678,7 +1678,7 @@ class AppLocalizationsTa extends AppLocalizations {
 
   @override
   String notValidLemmyInstance(Object instance) {
-    return '$instance செல்லுபடியாகும் லெம்மி உதாரணமாகத் தெரியவில்லை';
+    return '$instance செல்லுபடியாகும் உதாரணமாகத் தெரியவில்லை';
   }
 
   @override
@@ -1781,7 +1781,7 @@ class AppLocalizationsTa extends AppLocalizations {
 
   @override
   String performedBy(Object user) {
-    return 'Performed by: $user';
+    return 'செய்தவர்: $user';
   }
 
   @override
@@ -2630,7 +2630,7 @@ class AppLocalizationsTa extends AppLocalizations {
 
   @override
   String switchedAccount(Object username) {
-    return 'Switched to $username';
+    return '$username க்கு மாறியது';
   }
 
   @override
@@ -2839,7 +2839,7 @@ class AppLocalizationsTa extends AppLocalizations {
   }
 
   @override
-  String get unableToLoadPost => 'Unable to load post';
+  String get unableToLoadPost => 'இடுகையை ஏற்ற முடியவில்லை';
 
   @override
   String unableToLoadPostsFrominstance(Object instance) {
@@ -2873,7 +2873,7 @@ class AppLocalizationsTa extends AppLocalizations {
       'சமூகத்திலிருந்து தடைசெய்யப்படாத பயனர்';
 
   @override
-  String get unblock => 'Unblock';
+  String get unblock => 'தடை';
 
   @override
   String get unblockCommunity => 'சமூகத்தைத் தடைசெய்க';
@@ -2897,7 +2897,7 @@ class AppLocalizationsTa extends AppLocalizations {
   String get unexpectedError => 'எதிர்பாராத பிழை';
 
   @override
-  String get unfavorite => 'Unfavorite';
+  String get unfavorite => 'மாறாத';
 
   @override
   String get unfeaturedPost => 'தயாரிக்கப்படாத இடுகை';

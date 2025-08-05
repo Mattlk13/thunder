@@ -9,7 +9,7 @@ class AppLocalizationsIt extends AppLocalizations {
   AppLocalizationsIt([String locale = 'it']) : super(locale);
 
   @override
-  String get about => 'Riguardo';
+  String get about => 'Info';
 
   @override
   String get accept => 'Accetta';
@@ -35,7 +35,7 @@ class AppLocalizationsIt extends AppLocalizations {
 
   @override
   String accountBirthday(Object additionalInfo) {
-    return 'Compleanno dell\'Account $additionalInfo';
+    return 'Compleanno Account $additionalInfo';
   }
 
   @override
@@ -134,7 +134,7 @@ class AppLocalizationsIt extends AppLocalizations {
   String get all => 'Tutto';
 
   @override
-  String get allPosts => 'Tutti i post';
+  String get allPosts => 'Tutti i Post';
 
   @override
   String get allowOpenSupportedLinks =>
@@ -188,17 +188,17 @@ class AppLocalizationsIt extends AppLocalizations {
 
   @override
   String averageComments(Object x) {
-    return '$x comments/month';
+    return '$x commenti/mese';
   }
 
   @override
   String averageContributions(Object x) {
-    return '$x contributions/month';
+    return '$x contributi/mese';
   }
 
   @override
   String averagePosts(Object x) {
-    return '$x posts/month';
+    return '$x post/mese';
   }
 
   @override
@@ -368,7 +368,7 @@ class AppLocalizationsIt extends AppLocalizations {
 
   @override
   String get collapseParentCommentBodyOnGesture =>
-      'Nascondi Commento Genitore se Collassato';
+      'Nascondi Commento Genitore quando Ridotto';
 
   @override
   String get collapsePost => 'Riduci post';
@@ -412,7 +412,7 @@ class AppLocalizationsIt extends AppLocalizations {
   String get comfortable => 'Confortevole';
 
   @override
-  String get comment => 'Commenta';
+  String get comment => 'Commento';
 
   @override
   String get commentBehaviourSettings => 'Commenti';
@@ -532,7 +532,7 @@ class AppLocalizationsIt extends AppLocalizations {
   String get contentWarning => 'Avviso Contenuti';
 
   @override
-  String get controversial => 'Controverso';
+  String get controversial => 'Controversi';
 
   @override
   String get copiedToClipboard => 'Copiato in memoria';
@@ -701,16 +701,16 @@ class AppLocalizationsIt extends AppLocalizations {
   String get decline => 'Declina';
 
   @override
-  String get defaultColor => 'Default';
+  String get defaultColor => 'Predefinito';
 
   @override
-  String get defaultCommentSortType => 'Tipo Ordinamento Commenti di Default';
+  String get defaultCommentSortType => 'Tipo Ordinamento Commenti Predefinito';
 
   @override
-  String get defaultFeedSortType => 'Tipo Ordinamento Feed di Default';
+  String get defaultFeedSortType => 'Tipo Ordinamento Feed Predefinito';
 
   @override
-  String get defaultFeedType => 'Ordinamento Feed di Default';
+  String get defaultFeedType => 'Ordinamento Feed Predefinito';
 
   @override
   String get delete => 'Elimina';
@@ -770,7 +770,7 @@ class AppLocalizationsIt extends AppLocalizations {
   }
 
   @override
-  String get dimReadPosts => 'I post già letti saranno oscurati';
+  String get dimReadPosts => 'Sbiadisci Post Letti';
 
   @override
   String get disable => 'Disabilita';
@@ -1025,7 +1025,7 @@ class AppLocalizationsIt extends AppLocalizations {
   String get feedSettings => 'Impostazioni Feed';
 
   @override
-  String get feedTypeAndSorts => 'Feed di Default e Ordinamento';
+  String get feedTypeAndSorts => 'Feed Predefinito e Ordinamento';
 
   @override
   String get fetchAccountError => 'Non è stato possibile stabilire l\'account';
@@ -1126,7 +1126,7 @@ class AppLocalizationsIt extends AppLocalizations {
   String get hostInstance => 'Host Istanza';
 
   @override
-  String get hot => 'Popolare';
+  String get hot => 'Popolari';
 
   @override
   String get image => 'Immagine';
@@ -1247,7 +1247,7 @@ class AppLocalizationsIt extends AppLocalizations {
 
   @override
   String joined(Object x) {
-    return 'Joined $x';
+    return 'Iscritto il $x';
   }
 
   @override
@@ -1268,7 +1268,7 @@ class AppLocalizationsIt extends AppLocalizations {
 
   @override
   String get languageNotAllowed =>
-      'Questa comunità non permette post nella lingua selezionata. Prova altra lingua.';
+      'Questa comunità non permette post nella lingua che hai selezionato. Prova un altra lingua.';
 
   @override
   String get large => 'Largo';
@@ -1341,7 +1341,7 @@ class AppLocalizationsIt extends AppLocalizations {
   String get localOnly => 'Solo Locale';
 
   @override
-  String get localPosts => 'Post della Rete Locale';
+  String get localPosts => 'Post Locali';
 
   @override
   String get lockPost => 'Fissa Post';
@@ -1502,7 +1502,7 @@ class AppLocalizationsIt extends AppLocalizations {
   String get modlog => 'Modlog';
 
   @override
-  String get mostComments => 'La Maggioranza dei Commenti';
+  String get mostComments => 'Più Commentati';
 
   @override
   String get mustBeLoggedIn => 'Devi effettuare l\'accesso';
@@ -1612,7 +1612,7 @@ class AppLocalizationsIt extends AppLocalizations {
   String get noMessages => 'Nessun messaggio';
 
   @override
-  String get noPostsFound => 'Nessun post trovato';
+  String get noPostsFound => 'Nessun post trovato.';
 
   @override
   String get noProfileBioSet => 'Nessuna bio profilo impostata';
@@ -1718,7 +1718,7 @@ class AppLocalizationsIt extends AppLocalizations {
   String get openAccountSwitcher => 'Apri interruttore utenti';
 
   @override
-  String get openByDefault => 'Apri per default';
+  String get openByDefault => 'Apri per impostazione predefinita';
 
   @override
   String get openInBrowser => 'Apri nel Browser';
@@ -1805,7 +1805,7 @@ class AppLocalizationsIt extends AppLocalizations {
   String get postBodyViewType => 'Tipo di Visualizzazione del Corpo del Post';
 
   @override
-  String get postContentFontScale => 'Scala Font Contenuto del Post';
+  String get postContentFontScale => 'Scala Font Contenuto Post';
 
   @override
   String get postCreatedSuccessfully => 'Post creato con successo!';
@@ -2096,13 +2096,13 @@ class AppLocalizationsIt extends AppLocalizations {
   String get saveColor => 'Salva Colore';
 
   @override
-  String get saveSettings => 'Salva le Impostazioni';
+  String get saveSettings => 'Salva Impostazioni';
 
   @override
-  String get saved => 'Salvato';
+  String get saved => 'Salvati';
 
   @override
-  String get scaled => 'Scala';
+  String get scaled => 'Bilanciati';
 
   @override
   String get scrapeMissingLinkPreviews => 'Recupera Anteprime Link Mancanti';
@@ -2284,7 +2284,7 @@ class AppLocalizationsIt extends AppLocalizations {
   String get settingsPageAppearanceComments => 'Comments';
 
   @override
-  String get settingsPageAppearancePosts => 'Posts';
+  String get settingsPageAppearancePosts => 'Post';
 
   @override
   String get settingsPageAppearanceTheming => 'Theming';
@@ -2639,7 +2639,7 @@ class AppLocalizationsIt extends AppLocalizations {
   String get themeTertiary => 'Tema Terziario';
 
   @override
-  String get theming => 'Tematizzazione';
+  String get theming => 'Personalizzazione tema';
 
   @override
   String get thickness => 'Spessore';
@@ -2730,7 +2730,7 @@ class AppLocalizationsIt extends AppLocalizations {
 
   @override
   String totalPosts(Object x) {
-    return '$x Posts';
+    return '$x Post';
   }
 
   @override
@@ -2796,7 +2796,7 @@ class AppLocalizationsIt extends AppLocalizations {
 
   @override
   String unableToLoadPostsFrominstance(Object instance) {
-    return 'Impossibile caricare i post da $instance';
+    return 'Impossibile caricare post da $instance';
   }
 
   @override
@@ -2948,7 +2948,7 @@ class AppLocalizationsIt extends AppLocalizations {
 
   @override
   String get useCompactView =>
-      'Abilita per post piccoli, disabilita per post più grandi.';
+      'Abilita per post piccoli, disabilita per post grandi.';
 
   @override
   String get useLocalNotifications => 'Usa Notifiche Locali (Sperimentale)';
@@ -3063,7 +3063,7 @@ class AppLocalizationsIt extends AppLocalizations {
   String get videoLinkHandlingExternal => 'Riprodurre video con app esterna';
 
   @override
-  String get videoPlayerInApp => 'Utilizzare player Thunder integrato';
+  String get videoPlayerInApp => 'Utilizza player Thunder integrato';
 
   @override
   String get videoPlayerMode => 'Modalità Player';

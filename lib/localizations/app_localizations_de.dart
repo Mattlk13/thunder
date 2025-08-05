@@ -56,12 +56,12 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String accountSwitchParentCommentNotFound(Object instance) {
-    return 'Der ausgewählte Kommentar wurde nicht auf \'$instance\'gefunden. Wechsle zu vorherigem Konto.';
+    return 'Der ausgewählte Kommentar wurde nicht auf \'$instance\'gefunden';
   }
 
   @override
   String accountSwitchPostNotFound(Object instance) {
-    return 'Der gewählte Post wurde nicht auf \'$instance\'gefunden. Wechsle zurück auf vorheriges Konto.';
+    return 'Der gewählte Post wurde nicht auf \'$instance\'gefunden';
   }
 
   @override
@@ -1017,7 +1017,7 @@ class AppLocalizationsDe extends AppLocalizations {
       'Benachrichtigungseinstellungen konnten nicht aktualisiert werden';
 
   @override
-  String get favorite => 'Favorit';
+  String get favorite => 'Favorisieren';
 
   @override
   String get favorites => 'Favoriten';
@@ -1677,7 +1677,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String notValidLemmyInstance(Object instance) {
-    return '$instance scheint keine gültige Lemmy-Instanz zu sein';
+    return '$instance scheint keine gültige Instanz zu sein';
   }
 
   @override

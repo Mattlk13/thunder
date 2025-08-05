@@ -185,17 +185,17 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String averageComments(Object x) {
-    return '$x comments/month';
+    return '$x opmerkingen/maand';
   }
 
   @override
   String averageContributions(Object x) {
-    return '$x contributions/month';
+    return '$x bĳdragen/maand';
   }
 
   @override
   String averagePosts(Object x) {
-    return '$x posts/month';
+    return '$x berichten/maand';
   }
 
   @override
@@ -224,7 +224,7 @@ class AppLocalizationsNl extends AppLocalizations {
   String get base => 'Basis';
 
   @override
-  String get block => 'Block';
+  String get block => 'Blokkeren';
 
   @override
   String get blockCommunity => 'Gemeenschap blokkeren';
@@ -382,7 +382,7 @@ class AppLocalizationsNl extends AppLocalizations {
   String get colorizeCommunityName => 'Colorize Community Name';
 
   @override
-  String get colorizeInstanceName => 'Colorize Instance Name';
+  String get colorizeInstanceName => 'Instantie­naam kleuren';
 
   @override
   String get colorizeUserName => 'Colorize User Name';
@@ -429,7 +429,7 @@ class AppLocalizationsNl extends AppLocalizations {
   String get commentShowUserAvatar => 'Show User Avatar';
 
   @override
-  String get commentShowUserInstance => 'Show User Instance';
+  String get commentShowUserInstance => 'Gebruikers­instantie tonen';
 
   @override
   String get commentSortType => 'Comment Sort Type';
@@ -502,7 +502,7 @@ class AppLocalizationsNl extends AppLocalizations {
       'Are you sure you want to mark all replies, mentions, and messages as read?';
 
   @override
-  String get confirmMarkAllAsReadTitle => 'Mark all as read?';
+  String get confirmMarkAllAsReadTitle => 'Alles als gelezen markeren?';
 
   @override
   String get confirmResetCommentPreferences =>
@@ -612,7 +612,7 @@ class AppLocalizationsNl extends AppLocalizations {
   String get createComment => 'Opmerking plaatsen';
 
   @override
-  String get createNewCrossPost => 'Create new cross-post';
+  String get createNewCrossPost => 'Nieuw kruis­bericht maken';
 
   @override
   String get createPost => 'Bericht plaatsen';
@@ -766,7 +766,7 @@ class AppLocalizationsNl extends AppLocalizations {
   }
 
   @override
-  String get dimReadPosts => 'Dim Read Posts';
+  String get dimReadPosts => 'Gelezen berichten dimmen';
 
   @override
   String get disable => 'Uitschakelen';
@@ -797,7 +797,7 @@ class AppLocalizationsNl extends AppLocalizations {
   String get dividerAppearance => 'Verdeler­weergave';
 
   @override
-  String get doNotShowAgain => 'Do Not Show Again';
+  String get doNotShowAgain => 'Niet opnieuw tonen';
 
   @override
   String get doNotSupportMultipleUnifiedPushApps =>
@@ -816,7 +816,8 @@ class AppLocalizationsNl extends AppLocalizations {
   String get downvoted => 'Gedownvotet';
 
   @override
-  String get downvotesDisabled => 'Downvotes are turned off on this instance.';
+  String get downvotesDisabled =>
+      'Downvotes zĳn uitgeschakeld op deze instantie.';
 
   @override
   String get edit => 'Bewerken';
@@ -853,16 +854,17 @@ class AppLocalizationsNl extends AppLocalizations {
   String get enableFloatingButtonOnFeeds => 'Enable Floating Button On Feeds';
 
   @override
-  String get enableFloatingButtonOnPosts => 'Enable Floating Button On Posts';
+  String get enableFloatingButtonOnPosts =>
+      'Zwevende knop op berichten inschakelen';
 
   @override
   String get enableInboxNotifications => 'Enable Inbox Notifications';
 
   @override
-  String get enablePostFab => 'Enable Floating Button on Posts';
+  String get enablePostFab => 'Zwevende knop op berichten inschakelen';
 
   @override
-  String get endOfComments => 'End of comments';
+  String get endOfComments => 'Einde van de opmerkingen';
 
   @override
   String get endSearch => 'Stoppen met zoeken';
@@ -897,7 +899,7 @@ class AppLocalizationsNl extends AppLocalizations {
       'There was an error marking the reply as unread.';
 
   @override
-  String get errorNoActiveInstance => 'No active instance found';
+  String get errorNoActiveInstance => 'Geen actieve instantie gevonden';
 
   @override
   String get errorParsingJson =>
@@ -999,7 +1001,7 @@ class AppLocalizationsNl extends AppLocalizations {
       'Failed to update notification settings';
 
   @override
-  String get favorite => 'Favorite';
+  String get favorite => 'Opslaan als favoriet';
 
   @override
   String get favorites => 'Favorieten';
@@ -1101,7 +1103,7 @@ class AppLocalizationsNl extends AppLocalizations {
   String get hideColor => 'Kleur verbergen';
 
   @override
-  String get hideNsfwPostsFromFeed => 'Hide NSFW Posts from Feed';
+  String get hideNsfwPostsFromFeed => 'NSFW-berichten verbergen uit feed';
 
   @override
   String get hideNsfwPreviews => 'Blur NSFW Previews';
@@ -1208,9 +1210,8 @@ class AppLocalizationsNl extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: 'Instances',
-      one: 'Instance',
-      zero: 'Instance',
+      other: 'Instanties',
+      one: 'Instantie',
     );
     return '$_temp0 ';
   }
@@ -1225,14 +1226,14 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String instanceHasAlreadyBenAdded(Object instance) {
-    return '$instance has already been added.';
+    return '$instance is al toegevoegd.';
   }
 
   @override
-  String get instanceNameColor => 'Instance Name Color';
+  String get instanceNameColor => 'Kleur van instantie­naam';
 
   @override
-  String get instanceNameThickness => 'Instance Name Thickness';
+  String get instanceNameThickness => 'Dikte van instantie­naam';
 
   @override
   String get instances => 'Instanties';
@@ -1246,7 +1247,7 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String joined(Object x) {
-    return 'Joined $x';
+    return 'Lid geworden op $x';
   }
 
   @override
@@ -1319,7 +1320,7 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String loadMorePlural(Object count) {
-    return 'Load $count more replies…';
+    return 'Nog $count reacties laden…';
   }
 
   @override
@@ -1390,7 +1391,7 @@ class AppLocalizationsNl extends AppLocalizations {
   String get manageMedia => 'Media beheren';
 
   @override
-  String get markAllAsRead => 'Mark all as read';
+  String get markAllAsRead => 'Alles als gelezen markeren';
 
   @override
   String get markAsRead => 'Mark as read';
@@ -1418,9 +1419,8 @@ class AppLocalizationsNl extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: 'Mentions',
-      one: 'Mention',
-      zero: 'Mention',
+      other: 'Vermeldingen',
+      one: 'Vermelding',
     );
     return '$_temp0';
   }
@@ -1433,9 +1433,8 @@ class AppLocalizationsNl extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: 'Messages',
-      one: 'Message',
-      zero: 'Message',
+      other: 'Berichten',
+      one: 'Bericht',
     );
     return '$_temp0';
   }
@@ -1459,19 +1458,19 @@ class AppLocalizationsNl extends AppLocalizations {
   String get modBanFromCommunity => 'Ban/Unban Users from Communities';
 
   @override
-  String get modFeaturePost => 'Feature/Unfeature Posts';
+  String get modFeaturePost => 'Berichten uitlichten/niet meer uitlichten';
 
   @override
-  String get modLockPost => 'Lock/Unlock Posts';
+  String get modLockPost => 'Berichten vergrendelen/ontgrendelen';
 
   @override
-  String get modRemoveComment => 'Remove/Restore Comments';
+  String get modRemoveComment => 'Opmerkingen verwĳderen/herstellen';
 
   @override
-  String get modRemoveCommunity => 'Remove/Restore Communities';
+  String get modRemoveCommunity => 'Gemeenschappen verwĳderen/herstellen';
 
   @override
-  String get modRemovePost => 'Remove/Restore Posts';
+  String get modRemovePost => 'Berichten verwĳderen/herstellen';
 
   @override
   String get modTransferCommunity => 'Transferring Communities';
@@ -1555,7 +1554,8 @@ class AppLocalizationsNl extends AppLocalizations {
   String get noAccountsAdded => 'No accounts have been added';
 
   @override
-  String get noAnonymousInstances => 'No anonymous instances have been added';
+  String get noAnonymousInstances =>
+      'Er zĳn geen anonieme instanties toegevoegd';
 
   @override
   String get noCommentsFound => 'No comments found';
@@ -1585,7 +1585,7 @@ class AppLocalizationsNl extends AppLocalizations {
   String get noImages => 'It looks like you have not uploaded any images.';
 
   @override
-  String get noInstanceBlocks => 'No blocked instances.';
+  String get noInstanceBlocks => 'Er zĳn geen geblokkeerde instanties.';
 
   @override
   String get noItems => 'Geen items';
@@ -1606,10 +1606,10 @@ class AppLocalizationsNl extends AppLocalizations {
   String get noMessages => 'Geen berichten';
 
   @override
-  String get noPostsFound => 'No posts found.';
+  String get noPostsFound => 'Er zĳn geen berichten gevonden.';
 
   @override
-  String get noProfileBioSet => 'No profile bio set';
+  String get noProfileBioSet => 'Geen profiel­biografie ingesteld';
 
   @override
   String get noReferencesToImage =>
@@ -1764,7 +1764,7 @@ class AppLocalizationsNl extends AppLocalizations {
   String get pinToCommunity => 'Pin to Community';
 
   @override
-  String get pinned => 'Pinned';
+  String get pinned => 'Vastgepind';
 
   @override
   String get placeholderText =>
@@ -1819,13 +1819,13 @@ class AppLocalizationsNl extends AppLocalizations {
       'Show a preview of the post with the given settings';
 
   @override
-  String get postSavedAsDraft => 'Post saved as draft';
+  String get postSavedAsDraft => 'Bericht opgeslagen als concept';
 
   @override
-  String get postShowUserInstance => 'Show User Instance';
+  String get postShowUserInstance => 'Gebruikers­instantie tonen';
 
   @override
-  String get postSwipeActions => 'Post Swipe Actions';
+  String get postSwipeActions => 'Veegacties voor berichten';
 
   @override
   String get postSwipeGesturesHint =>
@@ -1895,7 +1895,7 @@ class AppLocalizationsNl extends AppLocalizations {
       'If enabled, Thunder will send your JWT token(s) to the server in order to poll for new notifications. \n\n **NOTE:** This will not take effect until the next time the app is launched.';
 
   @override
-  String get pushNotificationServer => 'Push Notification Server';
+  String get pushNotificationServer => 'Pushmeldings­server';
 
   @override
   String get pushNotificationServerDescription =>
@@ -1906,7 +1906,7 @@ class AppLocalizationsNl extends AppLocalizations {
       'You have hit the rate limit for this request. Please wait and try again later.';
 
   @override
-  String get reachedTheBottom => 'No more items to load';
+  String get reachedTheBottom => 'Geen items meer om te laden';
 
   @override
   String get read => 'Gelezen';
@@ -1927,7 +1927,8 @@ class AppLocalizationsNl extends AppLocalizations {
   String get reduceAnimations => 'Animaties verminderen';
 
   @override
-  String get reducesAnimations => 'Reduces the animations used within Thunder';
+  String get reducesAnimations =>
+      'Vermindert de animaties die in Thunder worden gebruikt';
 
   @override
   String get refresh => 'Vernieuwen';
@@ -1996,9 +1997,8 @@ class AppLocalizationsNl extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: 'Replies',
-      one: 'Reply',
-      zero: 'Reply',
+      other: 'Reacties',
+      one: 'Reactie',
     );
     return '$_temp0';
   }
@@ -2148,7 +2148,7 @@ class AppLocalizationsNl extends AppLocalizations {
   }
 
   @override
-  String get searchPostSearchType => 'Select Post Search Type';
+  String get searchPostSearchType => 'Selecteer zoektype voor berichten';
 
   @override
   String searchPostsFederatedWith(Object instance) {
@@ -2182,7 +2182,7 @@ class AppLocalizationsNl extends AppLocalizations {
   String get selectLanguage => 'Taal selecteren';
 
   @override
-  String get selectSearchType => 'Select Search Type';
+  String get selectSearchType => 'Selecteer zoektype';
 
   @override
   String get selectText => 'Tekst selecteren';
@@ -2288,7 +2288,7 @@ class AppLocalizationsNl extends AppLocalizations {
   String get settingsPageAppearancePosts => 'Berichten';
 
   @override
-  String get settingsPageAppearanceTheming => 'Theming';
+  String get settingsPageAppearanceTheming => 'Thema\'s';
 
   @override
   String get settingsPageDebug => 'Fout­opsporing';
@@ -2381,7 +2381,7 @@ class AppLocalizationsNl extends AppLocalizations {
   String get showCommunityDisplayNames => 'Show Community Display Names';
 
   @override
-  String get showCrossPosts => 'Show Cross Posts';
+  String get showCrossPosts => 'Kruis­berichten tonen';
 
   @override
   String get showEdgeToEdgeImages => 'Show Edge to Edge Images';
@@ -2393,13 +2393,13 @@ class AppLocalizationsNl extends AppLocalizations {
   String get showFullDate => 'Show Full Date';
 
   @override
-  String get showFullDateDescription => 'Show full date on posts';
+  String get showFullDateDescription => 'Volledige datum tonen op berichten';
 
   @override
   String get showFullHeightImages => 'Show Full Height Images';
 
   @override
-  String get showHiddenPosts => 'Show Hidden Posts';
+  String get showHiddenPosts => 'Verborgen berichten tonen';
 
   @override
   String get showInAppUpdateNotifications =>
@@ -2438,7 +2438,7 @@ class AppLocalizationsNl extends AppLocalizations {
   String get showPostCommunityIcons => 'Show Community Icons';
 
   @override
-  String get showPostSaveAction => 'Show Save Button';
+  String get showPostSaveAction => 'Opslaan-knop tonen';
 
   @override
   String get showPostTextContentPreview => 'Show Text Preview';
@@ -2450,7 +2450,7 @@ class AppLocalizationsNl extends AppLocalizations {
   String get showPostVoteActions => 'Show Vote Buttons';
 
   @override
-  String get showReadPosts => 'Show Read Posts';
+  String get showReadPosts => 'Gelezen berichten tonen';
 
   @override
   String get showSavedContent => 'Show saved content';
@@ -2727,12 +2727,12 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String totalComments(Object x) {
-    return '$x Comments';
+    return '$x opmerkingen';
   }
 
   @override
   String totalPosts(Object x) {
-    return '$x Posts';
+    return '$x berichten';
   }
 
   @override
@@ -2802,7 +2802,7 @@ class AppLocalizationsNl extends AppLocalizations {
   }
 
   @override
-  String get unableToLoadReplies => 'Unable to load more replies.';
+  String get unableToLoadReplies => 'Kan niet meer reacties laden.';
 
   @override
   String unableToNavigateToInstance(Object instanceHost) {
@@ -2827,7 +2827,7 @@ class AppLocalizationsNl extends AppLocalizations {
   String get unbannedUserFromCommunity => 'Unbanned User from Community';
 
   @override
-  String get unblock => 'Unblock';
+  String get unblock => 'Deblokkeren';
 
   @override
   String get unblockCommunity => 'Blokkering van gemeen­schap opheffen';
@@ -2851,7 +2851,7 @@ class AppLocalizationsNl extends AppLocalizations {
   String get unexpectedError => 'Onverwachte fout';
 
   @override
-  String get unfavorite => 'Unfavorite';
+  String get unfavorite => 'Verwijderen uit favorieten';
 
   @override
   String get unfeaturedPost => 'Unfeatured Post';
@@ -3056,7 +3056,7 @@ class AppLocalizationsNl extends AppLocalizations {
   String get videoAutoPlay => 'Video\'s automatisch afspelen';
 
   @override
-  String get videoDefaultPlaybackSpeed => 'Default Playback Speed';
+  String get videoDefaultPlaybackSpeed => 'Standaard­afspeelsnelheid';
 
   @override
   String get videoLinkHandlingExternal => 'Play video with an external app';
@@ -3071,10 +3071,10 @@ class AppLocalizationsNl extends AppLocalizations {
   String get viewAll => 'Alles bekĳken';
 
   @override
-  String get viewAllComments => 'View all comments';
+  String get viewAllComments => 'Alle opmerkingen tonen';
 
   @override
-  String get viewCommentSource => 'View Comment Source';
+  String get viewCommentSource => 'Opmerkings­bron tonen';
 
   @override
   String get viewModlog => 'Moderator­logboek bekĳken';
@@ -3083,10 +3083,10 @@ class AppLocalizationsNl extends AppLocalizations {
   String get viewOriginal => 'Origineel bekĳken';
 
   @override
-  String get viewPostAsDifferentAccount => 'View post as different account';
+  String get viewPostAsDifferentAccount => 'Bericht bekĳken als ander account';
 
   @override
-  String get viewPostSource => 'View post source';
+  String get viewPostSource => 'Bericht­bron bekĳken';
 
   @override
   String get viewSource => 'Bron bekĳken';
@@ -3103,16 +3103,16 @@ class AppLocalizationsNl extends AppLocalizations {
   String get visitCommunity => 'Gemeenschap bezoeken';
 
   @override
-  String get visitCommunityInstance => 'Visit Community Instance';
+  String get visitCommunityInstance => 'Gemeenschaps­instantie bezoeken';
 
   @override
   String get visitInstance => 'Instantie bezoeken';
 
   @override
-  String get visitUserInstance => 'Visit User Instance';
+  String get visitUserInstance => 'Gebruikers­instantie bezoeken';
 
   @override
-  String get visitUserProfile => 'Visit User Profile';
+  String get visitUserProfile => 'Gebruikers­profiel bezoeken';
 
   @override
   String get warning => 'Waarschuwing';
@@ -3137,9 +3137,7 @@ class AppLocalizationsNl extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$x years old',
-      one: '$x year old',
-      zero: '$x year old',
+      other: '$x jaar oud',
     );
     return '$_temp0';
   }
