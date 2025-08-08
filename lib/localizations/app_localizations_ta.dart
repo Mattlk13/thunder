@@ -120,6 +120,11 @@ class AppLocalizationsTa extends AppLocalizations {
   String get addedModToCommunity => 'சமூகத்திற்கு மோட் சேர்க்கப்பட்டது';
 
   @override
+  String addedUserAsCommunityModerator(Object username) {
+    return 'Added $username as community moderator';
+  }
+
+  @override
   String get admin => 'நிர்வாகி';
 
   @override
@@ -213,6 +218,9 @@ class AppLocalizationsTa extends AppLocalizations {
   @override
   String get backgroundCheckWarning =>
       'அறிவிப்பு காசோலைகள் கூடுதல் பேட்டரியை நுகரும் என்பதை நினைவில் கொள்க';
+
+  @override
+  String get ban => 'Ban';
 
   @override
   String get banFromCommunity => 'சமூகத்திலிருந்து தடை';
@@ -415,6 +423,9 @@ class AppLocalizationsTa extends AppLocalizations {
 
   @override
   String get comment => 'கருத்து';
+
+  @override
+  String get commentActions => 'Comment Actions';
 
   @override
   String get commentBehaviourSettings => 'கருத்துகள்';
@@ -768,6 +779,12 @@ class AppLocalizationsTa extends AppLocalizations {
 
   @override
   String get deletedByModerator => 'மதிப்பீட்டாளரால் நீக்கப்பட்டது';
+
+  @override
+  String get deletedComment => 'Deleted comment';
+
+  @override
+  String get deletedPost => 'Deleted post';
 
   @override
   String get deselectUndeterminedWarning =>
@@ -1191,7 +1208,7 @@ class AppLocalizationsTa extends AppLocalizations {
   String get importSettings => 'அமைப்புகளை இறக்குமதி செய்யுங்கள்';
 
   @override
-  String inReplyTo(Object community, Object post) {
+  String inReplyTo(Object post, Object community) {
     return '$communityஇல் $postஇதற்குப் பதிலளிக்கும் விதமாக';
   }
 
@@ -1802,6 +1819,9 @@ class AppLocalizationsTa extends AppLocalizations {
   String get pinned => 'குத்திவைக்கப்பட்டது';
 
   @override
+  String get pinnedPostToCommunity => 'Pinned post to community';
+
+  @override
   String get placeholderText =>
       'லோரெம் மிகவும் கேரட், தக்காளி இளங்கலை உருவாக்குபவர், ஆனால் நான் ஒரு இன்கோடில் இருப்பேன், ஒரு சிறந்த நேரத்தின் வலி. ஒரு விசித்திரமான மன்னிப்பைச் செய்வதற்காக, உல்லாம்கோ வேலையை அவர் பயன்படுத்துகிறார், இதன் விளைவாக வசதியின் அலிகிபிப் தவிர. வீட்டுப்பாடம் அல்லது விமர்சிக்கப்பட்ட இன்பத்தில் வலி ஏற்பட்ட வலி ஒரு இணை வலி கால்பந்து தப்பிக்கும். தவிர, அவர்கள் செய்ய ஆர்வமுள்ள கண்மூடித்தனமானவர்கள், சேவைகள் தின்பண்டங்கள் என்ற ஆன்மாவை கைவிடுகின்றன என்பதில் அவர்கள் தவறு செய்கிறார்கள்.';
 
@@ -2005,6 +2025,9 @@ class AppLocalizationsTa extends AppLocalizations {
   String get removePost => 'இடுகையை அகற்று';
 
   @override
+  String get removeUserData => 'Remove user data';
+
+  @override
   String get removed => 'அகற்றப்பட்டது';
 
   @override
@@ -2025,6 +2048,11 @@ class AppLocalizationsTa extends AppLocalizations {
 
   @override
   String get removedPost => 'அகற்றப்பட்ட இடுகை';
+
+  @override
+  String removedUserAsCommunityModerator(Object username) {
+    return 'Removed $username as community moderator';
+  }
 
   @override
   String get reorder => 'மறுவரிசை';
@@ -2073,6 +2101,12 @@ class AppLocalizationsTa extends AppLocalizations {
 
   @override
   String get reportPost => 'அறிக்கை இடுகை';
+
+  @override
+  String get reportedComment => 'Reported comment';
+
+  @override
+  String get reportedPost => 'Reported post';
 
   @override
   String get reporter => 'நிருபர்:';
@@ -2869,8 +2903,9 @@ class AppLocalizationsTa extends AppLocalizations {
   String get unbannedUser => 'தடைசெய்யப்படாத பயனர்';
 
   @override
-  String get unbannedUserFromCommunity =>
-      'சமூகத்திலிருந்து தடைசெய்யப்படாத பயனர்';
+  String unbannedUserFromCommunity(Object username) {
+    return 'சமூகத்திலிருந்து தடைசெய்யப்படாத பயனர்';
+  }
 
   @override
   String get unblock => 'தடை';
@@ -2936,6 +2971,9 @@ class AppLocalizationsTa extends AppLocalizations {
   @override
   String get unpinPostFromCommunity =>
       'சமூகத்திலிருந்து இடுக்கையை அவிழ்த்து விடுங்கள்';
+
+  @override
+  String get unpinnedPostFromCommunity => 'Unpinned post from community';
 
   @override
   String get unreachable => 'அணுக முடியாதது';

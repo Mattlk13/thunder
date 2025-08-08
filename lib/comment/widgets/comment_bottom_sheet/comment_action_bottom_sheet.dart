@@ -3,12 +3,17 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import 'package:back_button_interceptor/back_button_interceptor.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
+import 'package:thunder/account/account.dart';
 import 'package:thunder/comment/comment.dart';
 import 'package:thunder/comment/models/thunder_comment.dart';
 import 'package:thunder/community/enums/community_action.dart';
+import 'package:thunder/community/models/thunder_community.dart';
 import 'package:thunder/community/widgets/post_card_metadata.dart';
 import 'package:thunder/core/enums/full_name.dart';
+import 'package:thunder/core/models/thunder_my_user.dart';
+import 'package:thunder/shared/profile_site_info_cache.dart';
 import 'package:thunder/instance/widgets/instance_action_bottom_sheet.dart';
 import 'package:thunder/shared/share/share_action_bottom_sheet.dart';
 import 'package:thunder/user/enums/user_action.dart';
@@ -22,7 +27,7 @@ void showCommentActionBottomModalSheet(
   ThunderComment comment, {
   bool isShowingSource = false,
   GeneralCommentAction page = GeneralCommentAction.general,
-  void Function({CommentAction? commentAction, UserAction? userAction, CommunityAction? communityAction, required ThunderComment comment, dynamic value})? onAction,
+  void Function({CommentAction? commentAction, UserAction? userAction, CommunityAction? communityAction, ThunderComment? comment})? onAction,
 }) {
   showModalBottomSheet(
     context: context,
@@ -48,13 +53,29 @@ class CommentActionBottomSheet extends StatefulWidget {
   final GeneralCommentAction initialPage;
 
   /// The callback that is called when an action is performed
-  final void Function({CommentAction? commentAction, UserAction? userAction, CommunityAction? communityAction, required ThunderComment comment, dynamic value})? onAction;
+  final void Function({CommentAction? commentAction, UserAction? userAction, CommunityAction? communityAction, ThunderComment? comment})? onAction;
 
   @override
   State<CommentActionBottomSheet> createState() => _CommentActionBottomSheetState();
 }
 
 class _CommentActionBottomSheetState extends State<CommentActionBottomSheet> {
+  /// The account that is performing the action
+  late Account account;
+
+  /// Whether or not the downvotes are enabled
+  bool downvotesEnabled = true;
+
+  /// List of moderated communities
+  List<ThunderCommunity> moderatedCommunities = [];
+
+  /// List of blocked users
+  List<ThunderUser> blockedUsers = [];
+
+  /// List of blocked instances
+  List<ThunderInstanceBlock> blockedInstances = [];
+
+  /// The current page of the bottom sheet
   GeneralCommentAction currentPage = GeneralCommentAction.general;
 
   FutureOr<bool> _handleBack(bool stopDefaultButtonEvent, RouteInfo routeInfo) {
@@ -69,8 +90,11 @@ class _CommentActionBottomSheetState extends State<CommentActionBottomSheet> {
   @override
   void initState() {
     super.initState();
+    account = context.read<ProfileBloc>().state.account;
+
     currentPage = widget.initialPage;
     BackButtonInterceptor.add(_handleBack);
+    WidgetsBinding.instance.addPostFrameCallback((_) => getUserInformation());
   }
 
   @override
@@ -79,10 +103,22 @@ class _CommentActionBottomSheetState extends State<CommentActionBottomSheet> {
     super.dispose();
   }
 
+  Future<void> getUserInformation() async {
+    if (account.anonymous) return;
+
+    final siteInfo = await ProfileSiteInfoCache.instance.get(account);
+
+    if (!mounted) return;
+    setState(() {
+      downvotesEnabled = siteInfo.site.enableDownvotes ?? true;
+      blockedUsers = siteInfo.myUser?.personBlocks ?? [];
+      blockedInstances = siteInfo.myUser?.instanceBlocks ?? [];
+      moderatedCommunities = siteInfo.myUser?.moderates ?? [];
+    });
+  }
+
   String? generateSubtitle(GeneralCommentAction page) {
     final comment = widget.comment;
-
-    assert(comment.creator != null, 'Comment must have a creator');
 
     String? userInstance = fetchInstanceNameFromUrl(comment.creator!.actorId);
 
@@ -100,44 +136,54 @@ class _CommentActionBottomSheetState extends State<CommentActionBottomSheet> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    assert(widget.comment.creator != null && widget.comment.community != null, 'Comment must have a creator and community');
-
     Widget actions = switch (currentPage) {
       GeneralCommentAction.general => GeneralCommentActionBottomSheetPage(
+          account: account,
           context: widget.context,
+          downvotesEnabled: downvotesEnabled,
           comment: widget.comment,
           onSwitchActivePage: (page) => setState(() => currentPage = page),
-          onAction: (CommentAction commentAction, ThunderComment? updatedComment, dynamic value) {
-            widget.onAction?.call(commentAction: commentAction, comment: widget.comment, value: value);
+          onAction: (CommentAction commentAction, ThunderComment? updatedComment) {
+            widget.onAction?.call(commentAction: commentAction, comment: updatedComment);
           },
         ),
       GeneralCommentAction.comment => CommentCommentActionBottomSheet(
+          account: account,
+          moderatedCommunities: moderatedCommunities,
           context: widget.context,
           comment: widget.comment,
           isShowingSource: widget.isShowingSource,
-          onAction: (CommentAction commentAction, ThunderComment? updatedComment, dynamic value) {
-            widget.onAction?.call(commentAction: commentAction, comment: widget.comment, value: value);
+          onAction: (CommentAction commentAction, ThunderComment? updatedComment) {
+            widget.onAction?.call(commentAction: commentAction, comment: updatedComment);
           },
         ),
       GeneralCommentAction.user => UserActionBottomSheet(
+          account: account,
           context: widget.context,
+          blockedUsers: blockedUsers,
+          moderatedCommunities: moderatedCommunities,
           user: widget.comment.creator!,
           communityId: widget.comment.community!.id,
           isUserCommunityModerator: widget.comment.creatorIsModerator,
           isUserBannedFromCommunity: widget.comment.creatorBannedFromCommunity,
           onAction: (UserAction userAction, ThunderUser? updatedUser) {
+            ProfileSiteInfoCache.instance.markDirty(account);
             widget.onAction?.call(userAction: userAction, comment: widget.comment);
           },
         ),
       GeneralCommentAction.instance => InstanceActionBottomSheet(
+          account: account,
+          blockedInstances: blockedInstances,
           userInstanceId: widget.comment.creator!.instanceId,
           userInstanceUrl: widget.comment.creator!.actorId,
-          onAction: () {},
+          onAction: () {
+            ProfileSiteInfoCache.instance.markDirty(account);
+          },
         ),
       GeneralCommentAction.share => ShareActionBottomSheet(
+          account: account,
           context: widget.context,
           comment: widget.comment,
-          onAction: () {},
         ),
     };
 

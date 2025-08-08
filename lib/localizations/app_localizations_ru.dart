@@ -119,6 +119,11 @@ class AppLocalizationsRu extends AppLocalizations {
   String get addedModToCommunity => 'Added Mod to Community';
 
   @override
+  String addedUserAsCommunityModerator(Object username) {
+    return 'Added $username as community moderator';
+  }
+
+  @override
   String get admin => 'Админ';
 
   @override
@@ -212,6 +217,9 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get backgroundCheckWarning =>
       'Note that notification checks will consume additional battery';
+
+  @override
+  String get ban => 'Ban';
 
   @override
   String get banFromCommunity => 'Ban from Community';
@@ -413,6 +421,9 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get comment => 'Комментарий';
+
+  @override
+  String get commentActions => 'Comment Actions';
 
   @override
   String get commentBehaviourSettings => 'Комментарии';
@@ -637,7 +648,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String crossPostedFrom(Object postUrl) {
-    return 'cross-posted from:  $postUrl';
+    return 'cross-posted from: $postUrl';
   }
 
   @override
@@ -765,6 +776,12 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get deletedByModerator => 'deleted by moderator';
+
+  @override
+  String get deletedComment => 'Deleted comment';
+
+  @override
+  String get deletedPost => 'Deleted post';
 
   @override
   String get deselectUndeterminedWarning =>
@@ -1184,7 +1201,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get importSettings => 'Настройки импорта';
 
   @override
-  String inReplyTo(Object community, Object post) {
+  String inReplyTo(Object post, Object community) {
     return 'Ответ на $post в $community';
   }
 
@@ -1766,6 +1783,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get pinned => 'Прикреплено';
 
   @override
+  String get pinnedPostToCommunity => 'Pinned post to community';
+
+  @override
   String get placeholderText =>
       'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.';
 
@@ -1968,6 +1988,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get removePost => 'Удалить пост';
 
   @override
+  String get removeUserData => 'Remove user data';
+
+  @override
   String get removed => 'Удалено';
 
   @override
@@ -1987,6 +2010,11 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get removedPost => 'Удаленный пост';
+
+  @override
+  String removedUserAsCommunityModerator(Object username) {
+    return 'Removed $username as community moderator';
+  }
 
   @override
   String get reorder => 'Переместить';
@@ -2035,6 +2063,12 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get reportPost => 'Report Post';
+
+  @override
+  String get reportedComment => 'Reported comment';
+
+  @override
+  String get reportedPost => 'Reported post';
 
   @override
   String get reporter => 'Reporter:';
@@ -2824,7 +2858,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get unbannedUser => 'Unbanned User';
 
   @override
-  String get unbannedUserFromCommunity => 'Unbanned User from Community';
+  String unbannedUserFromCommunity(Object username) {
+    return 'Unbanned $username from Community';
+  }
 
   @override
   String get unblock => 'Unblock';
@@ -2889,6 +2925,9 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get unpinPostFromCommunity => 'Unpin Post from Community';
+
+  @override
+  String get unpinnedPostFromCommunity => 'Unpinned post from community';
 
   @override
   String get unreachable => 'Недоступно';

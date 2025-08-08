@@ -120,6 +120,11 @@ class AppLocalizationsSk extends AppLocalizations {
   String get addedModToCommunity => 'Pridaný moderátor do komunity';
 
   @override
+  String addedUserAsCommunityModerator(Object username) {
+    return 'Added $username as community moderator';
+  }
+
+  @override
   String get admin => 'Administrátor';
 
   @override
@@ -213,6 +218,9 @@ class AppLocalizationsSk extends AppLocalizations {
   @override
   String get backgroundCheckWarning =>
       'Uvedomte si, že kontroly upozornení budú spotrebúvať viac energie';
+
+  @override
+  String get ban => 'Ban';
 
   @override
   String get banFromCommunity => 'Ban from Community';
@@ -412,6 +420,9 @@ class AppLocalizationsSk extends AppLocalizations {
 
   @override
   String get comment => 'Komentár';
+
+  @override
+  String get commentActions => 'Comment Actions';
 
   @override
   String get commentBehaviourSettings => 'Komentáre';
@@ -761,6 +772,12 @@ class AppLocalizationsSk extends AppLocalizations {
 
   @override
   String get deletedByModerator => 'deleted by moderator';
+
+  @override
+  String get deletedComment => 'Deleted comment';
+
+  @override
+  String get deletedPost => 'Deleted post';
 
   @override
   String get deselectUndeterminedWarning =>
@@ -1181,7 +1198,7 @@ class AppLocalizationsSk extends AppLocalizations {
   String get importSettings => 'Importovať nastavenia';
 
   @override
-  String inReplyTo(Object community, Object post) {
+  String inReplyTo(Object post, Object community) {
     return 'V odpovedi na $post v $community';
   }
 
@@ -1777,6 +1794,9 @@ class AppLocalizationsSk extends AppLocalizations {
   String get pinned => 'Pinned';
 
   @override
+  String get pinnedPostToCommunity => 'Pinned post to community';
+
+  @override
   String get placeholderText =>
       'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.';
 
@@ -1977,6 +1997,9 @@ class AppLocalizationsSk extends AppLocalizations {
   String get removePost => 'Odstrániť príspevok';
 
   @override
+  String get removeUserData => 'Remove user data';
+
+  @override
   String get removed => 'Removed';
 
   @override
@@ -1996,6 +2019,11 @@ class AppLocalizationsSk extends AppLocalizations {
 
   @override
   String get removedPost => 'Vymazaný príspevok';
+
+  @override
+  String removedUserAsCommunityModerator(Object username) {
+    return 'Removed $username as community moderator';
+  }
 
   @override
   String get reorder => 'Reorder';
@@ -2037,6 +2065,12 @@ class AppLocalizationsSk extends AppLocalizations {
 
   @override
   String get reportPost => 'Report Post';
+
+  @override
+  String get reportedComment => 'Reported comment';
+
+  @override
+  String get reportedPost => 'Reported post';
 
   @override
   String get reporter => 'Reporter:';
@@ -2827,7 +2861,9 @@ class AppLocalizationsSk extends AppLocalizations {
   String get unbannedUser => 'Odblokovaný používateľ';
 
   @override
-  String get unbannedUserFromCommunity => 'Odblokovaný používateľ z komunity';
+  String unbannedUserFromCommunity(Object username) {
+    return 'Odblokovaný používateľ z komunity';
+  }
 
   @override
   String get unblock => 'Unblock';
@@ -2892,6 +2928,9 @@ class AppLocalizationsSk extends AppLocalizations {
 
   @override
   String get unpinPostFromCommunity => 'Unpin Post from Community';
+
+  @override
+  String get unpinnedPostFromCommunity => 'Unpinned post from community';
 
   @override
   String get unreachable => 'Nepochybné';

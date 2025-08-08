@@ -120,6 +120,11 @@ class AppLocalizationsCs extends AppLocalizations {
   String get addedModToCommunity => 'Added Mod to Community';
 
   @override
+  String addedUserAsCommunityModerator(Object username) {
+    return 'Added $username as community moderator';
+  }
+
+  @override
   String get admin => 'Admin';
 
   @override
@@ -213,6 +218,9 @@ class AppLocalizationsCs extends AppLocalizations {
   @override
   String get backgroundCheckWarning =>
       'Note that notification checks will consume additional battery';
+
+  @override
+  String get ban => 'Ban';
 
   @override
   String get banFromCommunity => 'Ban from Community';
@@ -413,6 +421,9 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get comment => 'Komentovat';
+
+  @override
+  String get commentActions => 'Comment Actions';
 
   @override
   String get commentBehaviourSettings => 'Komentáře';
@@ -761,6 +772,12 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get deletedByModerator => 'deleted by moderator';
+
+  @override
+  String get deletedComment => 'Deleted comment';
+
+  @override
+  String get deletedPost => 'Deleted post';
 
   @override
   String get deselectUndeterminedWarning =>
@@ -1181,7 +1198,7 @@ class AppLocalizationsCs extends AppLocalizations {
   String get importSettings => 'Importovat Nastavení';
 
   @override
-  String inReplyTo(Object community, Object post) {
+  String inReplyTo(Object post, Object community) {
     return 'V odpovědi na $post v $community';
   }
 
@@ -1774,6 +1791,9 @@ class AppLocalizationsCs extends AppLocalizations {
   String get pinned => 'Pinned';
 
   @override
+  String get pinnedPostToCommunity => 'Pinned post to community';
+
+  @override
   String get placeholderText =>
       'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.';
 
@@ -1974,6 +1994,9 @@ class AppLocalizationsCs extends AppLocalizations {
   String get removePost => 'Odstranit Příspěvek';
 
   @override
+  String get removeUserData => 'Remove user data';
+
+  @override
   String get removed => 'Removed';
 
   @override
@@ -1993,6 +2016,11 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get removedPost => 'Removed Post';
+
+  @override
+  String removedUserAsCommunityModerator(Object username) {
+    return 'Removed $username as community moderator';
+  }
 
   @override
   String get reorder => 'Reorder';
@@ -2036,6 +2064,12 @@ class AppLocalizationsCs extends AppLocalizations {
   String get reportPost => 'Report Post';
 
   @override
+  String get reportedComment => 'Reported comment';
+
+  @override
+  String get reportedPost => 'Reported post';
+
+  @override
   String get reporter => 'Reporter:';
 
   @override
@@ -2066,7 +2100,7 @@ class AppLocalizationsCs extends AppLocalizations {
   String get restorePost => 'Obnovit Příspěvek';
 
   @override
-  String get restoredComment => 'Restored Comment';
+  String get restoredComment => 'Restored comment';
 
   @override
   String get restoredCommentFromDraft => 'Obnovit komentář z konceptu';
@@ -2823,7 +2857,9 @@ class AppLocalizationsCs extends AppLocalizations {
   String get unbannedUser => 'Unbanned User';
 
   @override
-  String get unbannedUserFromCommunity => 'Unbanned User from Community';
+  String unbannedUserFromCommunity(Object username) {
+    return 'Unbanned $username from Community';
+  }
 
   @override
   String get unblock => 'Unblock';
@@ -2888,6 +2924,9 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get unpinPostFromCommunity => 'Unpin Post from Community';
+
+  @override
+  String get unpinnedPostFromCommunity => 'Unpinned post from community';
 
   @override
   String get unreachable => 'Unreachable';

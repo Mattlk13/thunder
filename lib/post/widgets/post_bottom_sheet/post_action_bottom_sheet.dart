@@ -3,9 +3,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import 'package:back_button_interceptor/back_button_interceptor.dart';
-import 'package:thunder/community/models/thunder_community.dart';
-import 'package:thunder/localizations/app_localizations.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
+import 'package:thunder/account/account.dart';
+import 'package:thunder/community/models/thunder_community.dart';
+import 'package:thunder/core/models/thunder_my_user.dart';
 import 'package:thunder/community/enums/community_action.dart';
 import 'package:thunder/community/widgets/post_card_metadata.dart';
 import 'package:thunder/core/enums/full_name.dart';
@@ -20,9 +22,7 @@ import 'package:thunder/user/models/thunder_user.dart';
 import 'package:thunder/user/widgets/user_action_bottom_sheet.dart';
 import 'package:thunder/user/enums/user_action.dart';
 import 'package:thunder/utils/instance.dart';
-import 'package:thunder/utils/global_context.dart';
-
-final l10n = AppLocalizations.of(GlobalContext.context)!;
+import 'package:thunder/shared/profile_site_info_cache.dart';
 
 /// Programatically show the post action bottom sheet
 void showPostActionBottomModalSheet(
@@ -52,13 +52,35 @@ class PostActionBottomSheet extends StatefulWidget {
   final GeneralPostAction initialPage;
 
   /// The callback that is called when an action is performed
-  final void Function({PostAction? postAction, UserAction? userAction, CommunityAction? communityAction, required ThunderPost? post})? onAction;
+  final void Function({PostAction? postAction, UserAction? userAction, CommunityAction? communityAction, ThunderPost? post})? onAction;
 
   @override
   State<PostActionBottomSheet> createState() => _PostActionBottomSheetState();
 }
 
 class _PostActionBottomSheetState extends State<PostActionBottomSheet> {
+  /// The account that is performing the action
+  late Account account;
+
+  /// Whether or not the downvotes are enabled
+  bool downvotesEnabled = true;
+
+  /// List of subscribed communities
+  List<ThunderCommunity> subscribedCommunities = [];
+
+  /// List of blocked communities
+  List<ThunderCommunity> blockedCommunities = [];
+
+  /// List of moderated communities
+  List<ThunderCommunity> moderatedCommunities = [];
+
+  /// List of blocked users
+  List<ThunderUser> blockedUsers = [];
+
+  /// List of blocked instances
+  List<ThunderInstanceBlock> blockedInstances = [];
+
+  /// The current page of the bottom sheet
   GeneralPostAction currentPage = GeneralPostAction.general;
 
   FutureOr<bool> _handleBack(bool stopDefaultButtonEvent, RouteInfo routeInfo) {
@@ -73,14 +95,33 @@ class _PostActionBottomSheetState extends State<PostActionBottomSheet> {
   @override
   void initState() {
     super.initState();
+    account = context.read<ProfileBloc>().state.account;
+
     currentPage = widget.initialPage;
     BackButtonInterceptor.add(_handleBack);
+    WidgetsBinding.instance.addPostFrameCallback((_) => getUserInformation());
   }
 
   @override
   void dispose() {
     BackButtonInterceptor.remove(_handleBack);
     super.dispose();
+  }
+
+  Future<void> getUserInformation() async {
+    if (account.anonymous) return;
+
+    final siteInfo = await ProfileSiteInfoCache.instance.get(account);
+
+    if (!mounted) return;
+    setState(() {
+      downvotesEnabled = siteInfo.site.enableDownvotes ?? true;
+      blockedUsers = siteInfo.myUser?.personBlocks ?? [];
+      blockedInstances = siteInfo.myUser?.instanceBlocks ?? [];
+      moderatedCommunities = siteInfo.myUser?.moderates ?? [];
+      blockedCommunities = siteInfo.myUser?.communityBlocks ?? [];
+      subscribedCommunities = siteInfo.myUser?.follows ?? [];
+    });
   }
 
   String? generateSubtitle(GeneralPostAction page) {
@@ -91,7 +132,7 @@ class _PostActionBottomSheetState extends State<PostActionBottomSheet> {
 
     switch (page) {
       case GeneralPostAction.user:
-        return generateUserFullName(context, post.creator?.displayNameOrName, post.creator?.displayName, fetchInstanceNameFromUrl(post.creator?.actorId));
+        return generateUserFullName(context, post.creator?.name, post.creator?.displayName, fetchInstanceNameFromUrl(post.creator?.actorId));
       case GeneralPostAction.community:
         return generateCommunityFullName(context, post.community?.name, post.community?.title, fetchInstanceNameFromUrl(post.community?.actorId));
       case GeneralPostAction.instance:
@@ -107,47 +148,70 @@ class _PostActionBottomSheetState extends State<PostActionBottomSheet> {
 
     Widget actions = switch (currentPage) {
       GeneralPostAction.general => GeneralPostActionBottomSheetPage(
+          account: account,
           context: widget.context,
+          downvotesEnabled: downvotesEnabled,
           post: widget.post,
           onSwitchActivePage: (page) => setState(() => currentPage = page),
           onAction: (PostAction postAction, ThunderPost? post) {
-            widget.onAction?.call(postAction: postAction, post: widget.post);
+            widget.onAction?.call(postAction: postAction, post: post);
           },
         ),
       GeneralPostAction.post => PostPostActionBottomSheet(
+          account: account,
           context: widget.context,
+          moderatedCommunities: moderatedCommunities,
           post: widget.post,
           onAction: (PostAction postAction, ThunderPost? post) {
-            widget.onAction?.call(postAction: postAction, post: widget.post);
+            widget.onAction?.call(postAction: postAction, post: post);
           },
         ),
       GeneralPostAction.user => UserActionBottomSheet(
+          account: account,
           context: widget.context,
+          blockedUsers: blockedUsers,
+          moderatedCommunities: moderatedCommunities,
           user: widget.post.creator!,
           communityId: widget.post.community?.id,
           isUserCommunityModerator: widget.post.creatorIsModerator,
           isUserBannedFromCommunity: widget.post.creatorBannedFromCommunity,
           onAction: (UserAction userAction, ThunderUser? updatedUser) {
+            ProfileSiteInfoCache.instance.markDirty(account);
             widget.onAction?.call(userAction: userAction, post: widget.post);
           },
         ),
       GeneralPostAction.community => CommunityPostActionBottomSheet(
+          account: account,
           post: widget.post,
+          moderatedCommunities: moderatedCommunities,
+          blockedCommunities: blockedCommunities,
+          subscribedCommunities: subscribedCommunities,
           onAction: (CommunityAction communityAction, ThunderCommunity? updatedCommunity) {
-            widget.onAction?.call(communityAction: communityAction, post: widget.post);
+            ProfileSiteInfoCache.instance.markDirty(account);
+            widget.onAction?.call(
+              communityAction: communityAction,
+              post: widget.post.copyWith(
+                community: updatedCommunity,
+                subscribed: updatedCommunity?.subscribed,
+              ),
+            );
           },
         ),
       GeneralPostAction.instance => InstanceActionBottomSheet(
+          account: account,
+          blockedInstances: blockedInstances,
           userInstanceId: widget.post.creator?.instanceId,
           userInstanceUrl: widget.post.creator?.actorId,
           communityInstanceId: widget.post.community?.instanceId,
           communityInstanceUrl: widget.post.community?.actorId,
-          onAction: () {},
+          onAction: () {
+            ProfileSiteInfoCache.instance.markDirty(account);
+          },
         ),
       GeneralPostAction.share => ShareActionBottomSheet(
+          account: account,
           context: widget.context,
           post: widget.post,
-          onAction: () {},
         ),
     };
 

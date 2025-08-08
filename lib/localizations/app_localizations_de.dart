@@ -120,6 +120,11 @@ class AppLocalizationsDe extends AppLocalizations {
   String get addedModToCommunity => 'Moderator zur Community hinzugefügt';
 
   @override
+  String addedUserAsCommunityModerator(Object username) {
+    return 'Added $username as community moderator';
+  }
+
+  @override
   String get admin => 'Administrator';
 
   @override
@@ -214,6 +219,9 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get backgroundCheckWarning =>
       'Beachte das Benachrichtigungsprüfungen zusätzlich Strom verbrauchen';
+
+  @override
+  String get ban => 'Ban';
 
   @override
   String get banFromCommunity => 'Von Community ausgeschlossen';
@@ -416,6 +424,9 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get comment => 'Kommentieren';
+
+  @override
+  String get commentActions => 'Comment Actions';
 
   @override
   String get commentBehaviourSettings => 'Kommentare';
@@ -766,6 +777,12 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get deletedByModerator => 'vom Moderator gelöscht';
+
+  @override
+  String get deletedComment => 'Deleted comment';
+
+  @override
+  String get deletedPost => 'Deleted post';
 
   @override
   String get deselectUndeterminedWarning =>
@@ -1192,7 +1209,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get importSettings => 'Einstellungen importieren';
 
   @override
-  String inReplyTo(Object community, Object post) {
+  String inReplyTo(Object post, Object community) {
     return 'Als Antwort auf $post in $community';
   }
 
@@ -1799,6 +1816,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get pinned => 'Angeheftet';
 
   @override
+  String get pinnedPostToCommunity => 'Pinned post to community';
+
+  @override
   String get placeholderText =>
       'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.';
 
@@ -2001,6 +2021,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get removePost => 'Post entfernen';
 
   @override
+  String get removeUserData => 'Remove user data';
+
+  @override
   String get removed => 'Entfernt';
 
   @override
@@ -2021,6 +2044,11 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get removedPost => 'Entfernter Post';
+
+  @override
+  String removedUserAsCommunityModerator(Object username) {
+    return 'Removed $username as community moderator';
+  }
 
   @override
   String get reorder => 'Neusortieren';
@@ -2069,6 +2097,12 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get reportPost => 'Post melden';
+
+  @override
+  String get reportedComment => 'Reported comment';
+
+  @override
+  String get reportedPost => 'Reported post';
 
   @override
   String get reporter => 'Melder:';
@@ -2862,8 +2896,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get unbannedUser => 'Nicht mehr ausgeschlossener Benutzer';
 
   @override
-  String get unbannedUserFromCommunity =>
-      'Nicht mehr aus der Community ausgeschlossener Benutzer';
+  String unbannedUserFromCommunity(Object username) {
+    return 'Nicht mehr aus der Community ausgeschlossener Benutzer';
+  }
 
   @override
   String get unblock => 'Entsperren';
@@ -2928,6 +2963,9 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get unpinPostFromCommunity => 'Post aus der Community lösen';
+
+  @override
+  String get unpinnedPostFromCommunity => 'Unpinned post from community';
 
   @override
   String get unreachable => 'Unerreichbar';

@@ -118,6 +118,11 @@ class AppLocalizationsTr extends AppLocalizations {
   String get addedModToCommunity => 'Topluluğa Mod Eklendi';
 
   @override
+  String addedUserAsCommunityModerator(Object username) {
+    return 'Added $username as community moderator';
+  }
+
+  @override
   String get admin => 'Yönetici';
 
   @override
@@ -211,6 +216,9 @@ class AppLocalizationsTr extends AppLocalizations {
   @override
   String get backgroundCheckWarning =>
       'Bildirim kontrollerinin ek pil tüketeceğini unutmayın';
+
+  @override
+  String get ban => 'Ban';
 
   @override
   String get banFromCommunity => 'Topluluktan Yasakla';
@@ -410,6 +418,9 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get comment => 'Yorum';
+
+  @override
+  String get commentActions => 'Comment Actions';
 
   @override
   String get commentBehaviourSettings => 'Yorumlar';
@@ -760,6 +771,12 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get deletedByModerator => 'moderatör tarafından silindi';
+
+  @override
+  String get deletedComment => 'Deleted comment';
+
+  @override
+  String get deletedPost => 'Deleted post';
 
   @override
   String get deselectUndeterminedWarning =>
@@ -1181,7 +1198,7 @@ class AppLocalizationsTr extends AppLocalizations {
   String get importSettings => 'Ayarları İçe Aktar';
 
   @override
-  String inReplyTo(Object community, Object post) {
+  String inReplyTo(Object post, Object community) {
     return '$post gönderisine $community içinde yanıt olarak';
   }
 
@@ -1776,6 +1793,9 @@ class AppLocalizationsTr extends AppLocalizations {
   String get pinned => 'Sabitlenmiş';
 
   @override
+  String get pinnedPostToCommunity => 'Pinned post to community';
+
+  @override
   String get placeholderText =>
       'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.';
 
@@ -1978,6 +1998,9 @@ class AppLocalizationsTr extends AppLocalizations {
   String get removePost => 'Gönderiyi Kaldır';
 
   @override
+  String get removeUserData => 'Remove user data';
+
+  @override
   String get removed => 'Kaldırıldı';
 
   @override
@@ -1998,6 +2021,11 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get removedPost => 'Kaldırılmış Gönderi';
+
+  @override
+  String removedUserAsCommunityModerator(Object username) {
+    return 'Removed $username as community moderator';
+  }
 
   @override
   String get reorder => 'Yeniden Sırala';
@@ -2044,6 +2072,12 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get reportPost => 'Gönderiyi Şikayet Et';
+
+  @override
+  String get reportedComment => 'Reported comment';
+
+  @override
+  String get reportedPost => 'Reported post';
 
   @override
   String get reporter => 'Şikayet Eden:';
@@ -2834,8 +2868,9 @@ class AppLocalizationsTr extends AppLocalizations {
   String get unbannedUser => 'Yasağı Kaldırılmış Kullanıcı';
 
   @override
-  String get unbannedUserFromCommunity =>
-      'Kullanıcının Topluluktan Yasağı Kaldırıldı';
+  String unbannedUserFromCommunity(Object username) {
+    return 'Kullanıcının Topluluktan Yasağı Kaldırıldı';
+  }
 
   @override
   String get unblock => 'Engeli Kaldır';
@@ -2901,6 +2936,9 @@ class AppLocalizationsTr extends AppLocalizations {
   @override
   String get unpinPostFromCommunity =>
       'Gönderiyi Topluluktan Sabitlemeyi Kaldır';
+
+  @override
+  String get unpinnedPostFromCommunity => 'Unpinned post from community';
 
   @override
   String get unreachable => 'Ulaşılamıyor';
