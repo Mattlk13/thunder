@@ -245,15 +245,15 @@ class _CreateCommentPageState extends State<CreateCommentPage> {
       child: BlocProvider(
         create: (context) => CreateCommentCubit(account: account!),
         child: BlocConsumer<CreateCommentCubit, CreateCommentState>(
-          listener: (context, state) {
+          listener: (ctx, state) {
             if (state.status == CreateCommentStatus.success && state.comment != null) {
               widget.onCommentSuccess?.call(state.comment!, userChanged);
-              Navigator.of(context).pop();
+              Navigator.of(context).pop(state.comment);
             }
 
             if (state.status == CreateCommentStatus.error && state.message != null) {
               showSnackbar(state.message!);
-              context.read<CreateCommentCubit>().clearMessage();
+              ctx.read<CreateCommentCubit>().clearMessage();
             }
 
             switch (state.status) {
@@ -319,17 +319,11 @@ class _CreateCommentPageState extends State<CreateCommentPage> {
                                       borderRadius: const BorderRadius.all(Radius.circular(8.0)),
                                     ),
                                     child: CommentContent(
+                                      account: account!,
                                       comment: widget.parentComment!,
-                                      onVoteAction: (_, __) {},
-                                      onSaveAction: (_, __) {},
-                                      onReplyEditAction: (_, __) {},
-                                      onDeleteAction: (_, __) {},
-                                      isUserLoggedIn: true,
-                                      isOwnComment: false,
-                                      isHidden: false,
+                                      hidden: false,
                                       viewSource: viewSource,
                                       onViewSourceToggled: () => setState(() => viewSource = !viewSource),
-                                      disableActions: true,
                                       selectable: true,
                                       showReplyEditorButtons: true,
                                       onSelectionChanged: (selection) => replyViewSelection = selection,

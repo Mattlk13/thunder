@@ -1,12 +1,7 @@
 import 'package:flutter/material.dart';
 
-import 'package:flutter_bloc/flutter_bloc.dart';
-
 import 'package:thunder/src/features/account/account.dart';
 import 'package:thunder/src/features/comment/comment.dart';
-import 'package:thunder/src/core/enums/swipe_action.dart';
-import 'package:thunder/l10n/generated/app_localizations.dart';
-import 'package:thunder/src/shared/snackbar.dart';
 import 'package:thunder/src/app/utils/global_context.dart';
 import 'package:thunder/src/app/utils/navigation.dart';
 
@@ -60,13 +55,47 @@ ThunderComment optimisticallyDeleteComment(ThunderComment comment, bool deleted)
 /// We need to associate replies to the proper parent comment since we cannot guarantee order in the flattened list from the API.
 CommentNode buildCommentTree(List<ThunderComment> comments, {bool flatten = false}) {
   CommentNode root = CommentNode(comment: null, replies: []);
+  if (comments.isEmpty) return root;
+
+  Map<String, CommentNode> nodeMap = {'0': root};
+  List<ThunderComment> orphanedComments = [];
 
   for (final comment in comments) {
-    List<String> commentPath = comment.path.split('.');
-    String parentId = commentPath.length > 2 ? commentPath[commentPath.length - 2] : commentPath.first;
+    final commentPath = comment.path.split('.');
 
-    CommentNode commentNode = CommentNode(comment: comment, replies: []);
-    CommentNode.insertCommentNode(root, parentId, commentNode);
+    if (commentPath.length == 1 && commentPath.first == '0') {
+      debugPrint('Comment ${comment.id} has an invalid path: ${comment.path}');
+      continue;
+    }
+
+    final commentId = commentPath.last;
+    final parentId = commentPath.length > 2 ? commentPath[commentPath.length - 2] : commentPath.first;
+
+    final commentNode = CommentNode(comment: comment, replies: []);
+    nodeMap[commentId] = commentNode;
+
+    final parent = nodeMap[parentId];
+
+    if (parent != null) {
+      parent.insert(commentNode);
+    } else {
+      orphanedComments.add(comment);
+    }
+  }
+
+  for (final comment in orphanedComments) {
+    final commentPath = comment.path.split('.');
+    final commentId = commentPath.last;
+    final parentId = commentPath.length > 2 ? commentPath[commentPath.length - 2] : commentPath.first;
+
+    final commentNode = nodeMap[commentId];
+    final parent = nodeMap[parentId];
+
+    if (parent != null && commentNode != null) {
+      parent.insert(commentNode);
+    } else {
+      debugPrint('Comment ${comment.id} has no parent. Path: ${comment.path}');
+    }
   }
 
   return root;
@@ -75,8 +104,8 @@ CommentNode buildCommentTree(List<ThunderComment> comments, {bool flatten = fals
 String cleanCommentContent(ThunderComment comment) => cleanComment(comment.content, comment.removed, comment.deleted);
 
 String cleanComment(String commentContent, bool? commentRemoved, bool? commentDeleted) {
-  String deletedByModerator = "deleted by moderator";
-  String deletedByCreator = "deleted by creator";
+  String deletedByModerator = 'deleted by moderator';
+  String deletedByCreator = 'deleted by creator';
 
   try {
     // Try to load these strings from localizations
@@ -88,63 +117,41 @@ String cleanComment(String commentContent, bool? commentRemoved, bool? commentDe
     // Ignore the error and move on with the default strings
   }
 
-  if (commentRemoved == true) {
-    return '_${deletedByModerator}_';
-  }
-
-  if (commentDeleted == true) {
-    return '_${deletedByCreator}_';
-  }
-
+  if (commentRemoved == true) return '_${deletedByModerator}_';
+  if (commentDeleted == true) return '_${deletedByCreator}_';
   return commentContent;
 }
 
-void triggerCommentAction({
-  required BuildContext context,
-  SwipeAction? swipeAction,
-  required Function(int, int) onVoteAction,
-  required Function(int, bool) onSaveAction,
-  Function(ThunderComment comment, bool isEdit)? onReplyEditAction,
-  required int voteType,
-  bool? saved,
-  required ThunderComment comment,
-  int? highlightedCommentId,
-}) async {
-  switch (swipeAction) {
-    case SwipeAction.upvote:
-      onVoteAction(comment.id, voteType == 1 ? 0 : 1);
-      return;
-    case SwipeAction.downvote:
-      bool downvotesEnabled = context.read<ProfileBloc>().state.downvotesEnabled;
+Future<ThunderComment?> onCommentAction(BuildContext context, Account account, CommentAction action, ThunderComment comment, Map<String, dynamic>? data) async {
+  final repository = CommentRepositoryImpl(account: account);
 
-      if (downvotesEnabled == false) {
-        showSnackbar(AppLocalizations.of(context)!.downvotesDisabled);
-        return;
-      }
-      onVoteAction(comment.id, voteType == -1 ? 0 : -1);
-      return;
-    case SwipeAction.reply:
-      navigateToCreateCommentPage(context, parentComment: comment, onCommentSuccess: (comment, userChanged) {
-        if (!userChanged) {
-          onReplyEditAction?.call(comment, false);
-        }
-      });
+  ThunderComment? updatedComment;
+
+  switch (action) {
+    case CommentAction.vote:
+      updatedComment = await repository.vote(comment, comment.myVote == data?['voteType'] ? 0 : data?['voteType']);
+    case CommentAction.save:
+      updatedComment = await repository.save(comment, comment.saved != null && !comment.saved!);
+    case CommentAction.delete:
+      updatedComment = await repository.delete(comment, true);
+    case CommentAction.report:
+      await repository.report(comment.id, data?['reason']);
       break;
-    case SwipeAction.edit:
-      navigateToCreateCommentPage(
-        context,
-        comment: comment,
-        onCommentSuccess: (comment, userChanged) {
-          if (!userChanged) {
-            return onReplyEditAction?.call(comment, true);
-          }
-        },
-      );
+    case CommentAction.reply:
+      updatedComment = await navigateToCreateCommentPage(context, parentComment: comment, onCommentSuccess: (comment, _) => updatedComment = comment);
       break;
-    case SwipeAction.save:
-      onSaveAction(comment.id, !(saved ?? false));
+    case CommentAction.edit:
+      updatedComment = await navigateToCreateCommentPage(context, comment: comment, onCommentSuccess: (comment, _) => updatedComment = comment);
+      break;
+    case CommentAction.remove:
+      // TODO: Handle this case.
+      break;
+    case CommentAction.purge:
+      // TODO: Handle this case.
       break;
     default:
       break;
   }
+
+  return updatedComment;
 }
