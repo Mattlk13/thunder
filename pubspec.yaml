@@ -77,7 +77,6 @@ dependencies:
   smooth_highlight: ^0.1.1
   stream_transform: ^2.1.0
   super_sliver_list: ^0.4.1
-  swipeable_page_route: ^0.4.0
   unifiedpush: ^6.0.2
   url_launcher: ^6.1.11
   # There is an intentional space between the packge name and colon below. Do not remove!
@@ -89,8 +88,8 @@ dependencies:
   webview_flutter_wkwebview: ^3.5.0
   youtube_player_flutter: ^9.1.0
   youtube_player_iframe: ^5.2.0
-  freezed_annotation: ^2.4.4
-  freezed: ^2.5.7
+  freezed_annotation: ^3.1.0
+  freezed: ^3.2.2
   sqlite3_flutter_libs: ^0.5.39
 
 dev_dependencies:
