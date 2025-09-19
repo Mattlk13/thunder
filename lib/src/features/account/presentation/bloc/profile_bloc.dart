@@ -6,6 +6,8 @@ import 'package:collection/collection.dart';
 import 'package:equatable/equatable.dart';
 import 'package:stream_transform/stream_transform.dart';
 
+import 'package:thunder/src/core/cache/platform_version_cache.dart';
+import 'package:thunder/src/core/enums/threadiverse_platform.dart';
 import 'package:thunder/src/features/account/account.dart';
 import 'package:thunder/src/features/community/community.dart';
 import 'package:thunder/src/core/enums/post_sort_type.dart';
@@ -71,8 +73,10 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
   }
 
   Future<void> _initializeAuth(InitializeAuth event, Emitter<ProfileState> emit) async {
-    // Check to see what the current active profile is.
-    final account = await fetchActiveProfile();
+    final platformInfo = await detectPlatformFromNodeInfo(account.instance);
+    if (platformInfo == null) return emit(state.copyWith(status: ProfileStatus.failureCheckingInstance, error: () => GlobalContext.l10n.unableToLoadInstance(account.instance)));
+
+    PlatformVersionCache().set(account.instance, platformInfo['version'] ?? '');
 
     // Initialize the repositories with the current account
     instanceRepository = InstanceRepositoryImpl(account: account);
@@ -118,7 +122,8 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
       final instanceUrl = event.instance.replaceAll('https://', '');
 
       // Detect the platform before attempting to log in
-      final platform = await detectPlatformFromNodeInfo(instanceUrl);
+      final platformInfo = await detectPlatformFromNodeInfo(instanceUrl) ?? {'platform': ThreadiversePlatform.lemmy};
+      final platform = platformInfo['platform'];
 
       // Create a temporary Account to attempt to log in
       Account tempAccount = Account(id: '', index: -1, instance: instanceUrl, platform: platform);
@@ -150,6 +155,7 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
       if (account == null) return emit(state.copyWith(status: ProfileStatus.failure));
 
       // Set this account as the active account
+      this.account = account;
       final prefs = UserPreferences.instance.preferences;
       prefs.setString('active_profile_id', account.id);
 
@@ -183,6 +189,7 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
       return emit(state.copyWith(status: ProfileStatus.failure, error: () => AppLocalizations.of(GlobalContext.context)!.unexpectedError));
     }
 
+    this.account = account;
     add(InitializeAuth());
   }
 
@@ -232,7 +239,7 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
       }
     } catch (e) {
       debugPrint('Error fetching profile information: ${e.toString()}');
-      emit(state.copyWith(status: ProfileStatus.failure, error: () => getExceptionErrorMessage(e), reload: event.reload));
+      emit(state.copyWith(status: ProfileStatus.failureCheckingInstance, error: () => getExceptionErrorMessage(e), reload: event.reload));
     }
   }
 
@@ -250,7 +257,7 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
       return emit(state.copyWith(status: ProfileStatus.success, siteResponse: () => response));
     } catch (e) {
       debugPrint('Error fetching profile settings: ${e.toString()}');
-      emit(state.copyWith(status: ProfileStatus.failure, error: () => getExceptionErrorMessage(e), reload: event.reload));
+      emit(state.copyWith(status: ProfileStatus.failureCheckingInstance, error: () => getExceptionErrorMessage(e), reload: event.reload));
     }
   }
 
@@ -268,7 +275,7 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
       add(FetchProfileFavorites(reload: event.reload));
     } catch (e) {
       debugPrint('Error fetching profile subscriptions: ${e.toString()}');
-      emit(state.copyWith(status: ProfileStatus.failure, reload: event.reload, error: () => getExceptionErrorMessage(e)));
+      emit(state.copyWith(status: ProfileStatus.failureCheckingInstance, reload: event.reload, error: () => getExceptionErrorMessage(e)));
     }
   }
 
@@ -286,7 +293,7 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
       return emit(state.copyWith(status: ProfileStatus.success, reload: event.reload, favorites: communities));
     } catch (e) {
       debugPrint('Error fetching profile favorites: ${e.toString()}');
-      emit(state.copyWith(status: ProfileStatus.failure, reload: event.reload, error: () => getExceptionErrorMessage(e)));
+      emit(state.copyWith(status: ProfileStatus.failureCheckingInstance, reload: event.reload, error: () => getExceptionErrorMessage(e)));
     }
   }
 }

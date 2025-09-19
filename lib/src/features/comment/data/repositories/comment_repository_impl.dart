@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
+import 'package:thunder/src/core/cache/platform_version_cache.dart';
 import 'package:thunder/src/core/models/thunder_comment_report.dart';
 import 'package:thunder/src/core/network/lemmy_api.dart';
 import 'package:thunder/src/features/account/account.dart';
@@ -24,12 +25,14 @@ class CommentRepositoryImpl implements CommentRepository {
   late PiefedApi piefed;
 
   CommentRepositoryImpl({required this.account}) {
+    final version = PlatformVersionCache().get(account.instance);
+
     switch (account.platform) {
       case ThreadiversePlatform.lemmy:
-        lemmy = LemmyApi(account: account, debug: kDebugMode);
+        lemmy = LemmyApi(account: account, debug: kDebugMode, version: version);
         break;
       case ThreadiversePlatform.piefed:
-        piefed = PiefedApi(account: account, debug: kDebugMode);
+        piefed = PiefedApi(account: account, debug: kDebugMode, version: version);
         break;
       default:
         throw Exception('Unsupported platform: ${account.platform}');
@@ -49,15 +52,17 @@ class CommentRepositoryImpl implements CommentRepository {
   }
 
   @override
-  Future<List<ThunderComment>> getComments({
+  Future<Map<String, dynamic>> getComments({
     required int postId,
     int? parentId,
     int? page,
+    String? cursor,
     CommentSortType? commentSortType,
     int? maxDepth,
     int? limit,
     int? communityId,
   }) async {
+    /// Lemmy uses page while Piefed uses cursor for pagination
     switch (account.platform) {
       case ThreadiversePlatform.lemmy:
         return await lemmy.getComments(
@@ -72,7 +77,7 @@ class CommentRepositoryImpl implements CommentRepository {
       case ThreadiversePlatform.piefed:
         return await piefed.getComments(
           postId: postId,
-          page: page,
+          cursor: cursor,
           limit: limit,
           maxDepth: maxDepth,
           communityId: communityId,

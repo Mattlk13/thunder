@@ -1,8 +1,11 @@
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart';
 
+import 'package:http/http.dart';
+import 'package:version/version.dart';
+
+import 'package:thunder/src/core/enums/subscription_status.dart';
 import 'package:thunder/src/core/models/thunder_site_response.dart';
 import 'package:thunder/src/core/update/check_github_update.dart';
 import 'package:thunder/src/features/account/account.dart';
@@ -25,8 +28,11 @@ class PiefedApi {
   /// Whether to show debug information
   final bool debug;
 
+  /// The version of the platform
+  final Version? version;
+
   /// The Piefed API client
-  PiefedApi({required this.account, this.debug = false});
+  PiefedApi({required this.account, this.debug = false, required this.version});
 
   /// Build headers with optional JWT authorization
   Map<String, String> _buildHeaders() {
@@ -160,7 +166,7 @@ class PiefedApi {
     final queryParams = {
       'type_': feedListType?.value,
       'sort': postSortType?.value,
-      'page_cursor': page.toString(), // Page cursor is the page number in string format
+      'page': page.toString(),
       'limit': limit,
       'community_name': communityName,
       'community_id': communityId,
@@ -299,9 +305,9 @@ class PiefedApi {
   }
 
   /// Fetches a list of comments from the Piefed API
-  Future<List<ThunderComment>> getComments({
+  Future<Map<String, dynamic>> getComments({
     required int postId,
-    int? page,
+    String? cursor,
     int? limit,
     int? maxDepth,
     int? communityId,
@@ -311,16 +317,46 @@ class PiefedApi {
     Map<String, dynamic> body = {
       'sort': commentSortType?.value,
       'max_depth': maxDepth,
-      'page': page,
+      'page': cursor,
       'limit': limit,
-      'community_id': communityId,
       'post_id': postId,
       'parent_id': parentId,
-      'depth_first': true,
     };
 
-    final json = await _request(HttpMethod.get, '/api/alpha/comment/list', body);
-    return json['comments'].map<ThunderComment>((cv) => ThunderComment.fromPiefedCommentView(cv)).toList();
+    final json = await _request(HttpMethod.get, '/api/alpha/post/replies', body);
+
+    ThunderPost? post;
+    ThunderCommunity? community;
+
+    List<Map<String, dynamic>> flattenedComments = [];
+
+    // Flatten the json response. Each comment has a "replies" key that contains the replies to the comment and so forth.
+    // We should fetch all the comments an their associated replies.
+    void flattenComments(List<dynamic> comments) {
+      // Fill in the post/community as they're not included in the comment's replies
+      for (final comment in comments) {
+        if (post == null && comment['post'] != null) post = ThunderPost.fromPiefedPost(comment['post']);
+
+        if (community == null && comment['community'] != null) {
+          final subscribed = comment['subscribed'] != null ? SubscriptionStatus.values.firstWhere((e) => e.name == comment['subscribed']) : null;
+          community = ThunderCommunity.fromPiefedCommunity(comment['community'], subscribed: subscribed);
+        }
+
+        flattenedComments.add(comment);
+
+        if (comment['replies'] != null && comment['replies'].isNotEmpty) {
+          flattenComments(comment['replies']);
+        }
+      }
+    }
+
+    flattenComments(json['comments']);
+    final comments = flattenedComments.map<ThunderComment>((cv) => ThunderComment.fromPiefedCommentView(cv, post: post, community: community)).toList();
+
+    return {
+      'comments': comments,
+      'next_page': json['next_page'],
+    };
   }
 
   /// Creates a comment
@@ -515,16 +551,26 @@ class PiefedApi {
     String? reason,
     int? expires,
   }) async {
+    // If the version is before 1.2.0, use the old key
+    final isNewVersion = version != null && Version(version!.major, version!.minor, version!.patch).compareTo(Version(1, 2, 0)) >= 0;
+
     if (ban) {
-      final body = {'user_id': userId, 'community_id': communityId, 'reason': reason, 'expiredAt': expires};
+      Map<String, dynamic> body = {'user_id': userId, 'community_id': communityId, 'reason': reason};
+
+      // TODO: Remove check once most instances have updated to 1.2.0
+      if (isNewVersion) {
+        body['expired_at'] = expires;
+      } else {
+        body['expiredAt'] = expires;
+      }
 
       final json = await _request(HttpMethod.post, '/api/alpha/community/moderate/ban', body);
-      return ThunderUser.fromPiefedUser(json['bannedUser']);
+      return ThunderUser.fromPiefedUser(isNewVersion ? json['banned_user'] : json['bannedUser']);
     } else {
       final body = {'user_id': userId, 'community_id': communityId};
 
       final json = await _request(HttpMethod.put, '/api/alpha/community/moderate/unban', body);
-      return ThunderUser.fromPiefedUser(json['bannedUser']);
+      return ThunderUser.fromPiefedUser(isNewVersion ? json['banned_user'] : json['bannedUser']);
     }
   }
 
