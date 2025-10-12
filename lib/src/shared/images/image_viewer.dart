@@ -22,14 +22,22 @@ import 'package:thunder/src/app/bloc/thunder_bloc.dart';
 import 'package:thunder/src/shared/utils/media/image.dart';
 
 class ImageViewer extends StatefulWidget {
+  /// The URL of the image to display
   final String? url;
+
+  /// The bytes of the image to display
   final Uint8List? bytes;
+
+  /// The ID of the post to navigate to
   final int? postId;
+
+  /// The function to navigate to the post
   final void Function()? navigateToPost;
+
+  /// The alt text of the image
   final String? altText;
 
   /// Whether this image viewer is being shown within the context of a peek.
-  /// This would cause us to hide unnecsesary things like the buttons at the bottom.
   final bool isPeek;
 
   const ImageViewer({
@@ -47,8 +55,9 @@ class ImageViewer extends StatefulWidget {
 }
 
 class _ImageViewerState extends State<ImageViewer> with TickerProviderStateMixin {
-  GlobalKey<ExtendedImageSlidePageState> slidePagekey = GlobalKey<ExtendedImageSlidePageState>();
-  final GlobalKey<ExtendedImageGestureState> gestureKey = GlobalKey<ExtendedImageGestureState>();
+  final slidePagekey = GlobalKey<ExtendedImageSlidePageState>();
+  final gestureKey = GlobalKey<ExtendedImageGestureState>();
+
   bool downloaded = false;
   double slideTransparency = 0.92;
   double imageTransparency = 1.0;
@@ -67,34 +76,21 @@ class _ImageViewerState extends State<ImageViewer> with TickerProviderStateMixin
   late double imageHeight = 0;
   late double maxZoomLevel = 3;
 
+  /// Whether to show the alt text at the bottom of the image viewer
+  bool showAltText = false;
+
   void _maybeSlide(BuildContext context) {
-    setState(() {
-      maybeSlideZooming = true;
-    });
-    Timer(const Duration(milliseconds: 500), () {
-      if (context.mounted) {
-        setState(() {
-          maybeSlideZooming = false;
-        });
-      }
-    });
+    setState(() => maybeSlideZooming = true);
+    Timer(const Duration(milliseconds: 500), () => context.mounted ? setState(() => maybeSlideZooming = false) : null);
   }
 
   void enterFullScreen() {
-    setState(() {
-      fullscreen = true;
-    });
-    Timer(const Duration(milliseconds: 400), () {
-      if (fullscreen) {
-        SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: []);
-      }
-    });
+    setState(() => fullscreen = true);
+    if (fullscreen) SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: []);
   }
 
   void exitFullScreen() {
-    setState(() {
-      fullscreen = false;
-    });
+    setState(() => fullscreen = false);
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge, overlays: SystemUiOverlay.values);
   }
 
@@ -128,12 +124,13 @@ class _ImageViewerState extends State<ImageViewer> with TickerProviderStateMixin
 
   @override
   Widget build(BuildContext context) {
-    final ThunderState thunderState = context.read<ThunderBloc>().state;
-    final AppLocalizations l10n = AppLocalizations.of(context)!;
+    final thunderState = context.read<ThunderBloc>().state;
+    final l10n = AppLocalizations.of(context)!;
 
     AnimationController animationController = AnimationController(duration: const Duration(milliseconds: 140), vsync: this);
     Function() animationListener = () {};
     Animation? animation;
+
     return PopScope(
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) {
@@ -152,6 +149,7 @@ class _ImageViewerState extends State<ImageViewer> with TickerProviderStateMixin
           ),
           AnimatedContainer(
             duration: const Duration(milliseconds: 400),
+            curve: Curves.easeInOutCubicEmphasized,
             color: fullscreen ? Colors.black : Colors.black.withValues(alpha: slideTransparency),
           ),
           Positioned.fill(
@@ -445,6 +443,7 @@ class _ImageViewerState extends State<ImageViewer> with TickerProviderStateMixin
                           Padding(
                             padding: const EdgeInsets.all(4.0),
                             child: IconButton(
+                              tooltip: l10n.share,
                               onPressed: fullscreen
                                   ? null
                                   : () async {
@@ -482,7 +481,7 @@ class _ImageViewerState extends State<ImageViewer> with TickerProviderStateMixin
                                     )
                                   : Icon(
                                       Icons.share_rounded,
-                                      semanticLabel: "Share",
+                                      semanticLabel: l10n.share,
                                       color: Colors.white.withValues(alpha: 0.90),
                                     ),
                             ),
@@ -491,6 +490,7 @@ class _ImageViewerState extends State<ImageViewer> with TickerProviderStateMixin
                           Padding(
                             padding: const EdgeInsets.all(4.0),
                             child: IconButton(
+                              tooltip: l10n.save,
                               onPressed: (downloaded || isSavingMedia || fullscreen || widget.url == null || kIsWeb)
                                   ? null
                                   : () async {
@@ -549,24 +549,56 @@ class _ImageViewerState extends State<ImageViewer> with TickerProviderStateMixin
                           Padding(
                             padding: const EdgeInsets.all(4.0),
                             child: IconButton(
+                              tooltip: l10n.comments,
                               onPressed: () {
                                 Navigator.pop(context);
                                 widget.navigateToPost!();
                               },
                               icon: Icon(
                                 Icons.chat_rounded,
-                                semanticLabel: "Comments",
+                                semanticLabel: l10n.comments,
                                 color: Colors.white.withValues(alpha: 0.90),
                               ),
                             ),
                           ),
+                        if (widget.altText?.isNotEmpty == true)
+                          Padding(
+                            padding: const EdgeInsets.all(4.0),
+                            child: IconButton(
+                              tooltip: l10n.altText,
+                              onPressed: () => setState(() => showAltText = !showAltText),
+                              icon: Icon(
+                                Icons.text_fields,
+                                semanticLabel: l10n.altText,
+                                color: Colors.white.withValues(alpha: showAltText ? 0.90 : 0.5),
+                              ),
+                            ),
+                          ),
+                        Padding(
+                          padding: const EdgeInsets.all(4.0),
+                          child: IconButton(
+                            tooltip: l10n.fullscreen,
+                            onPressed: () {
+                              if (fullscreen) {
+                                exitFullScreen();
+                              } else {
+                                enterFullScreen();
+                              }
+                            },
+                            icon: Icon(
+                              Icons.fullscreen,
+                              semanticLabel: l10n.fullscreen,
+                              color: Colors.white.withValues(alpha: 0.90),
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ),
                 ),
               ],
             ),
-          if (widget.altText?.isNotEmpty == true)
+          if (widget.altText?.isNotEmpty == true && showAltText)
             Positioned(
               bottom: kBottomNavigationBarHeight + 25,
               width: MediaQuery.sizeOf(context).width,
@@ -575,7 +607,7 @@ class _ImageViewerState extends State<ImageViewer> with TickerProviderStateMixin
                 duration: const Duration(milliseconds: 200),
                 child: Padding(
                   padding: const EdgeInsets.all(16),
-                  child: ImageAltTextWrapper(altText: widget.altText!),
+                  child: ImageAltText(text: widget.altText!),
                 ),
               ),
             ),
@@ -585,112 +617,18 @@ class _ImageViewerState extends State<ImageViewer> with TickerProviderStateMixin
   }
 }
 
-class ImageAltTextWrapper extends StatefulWidget {
-  final String altText;
-
-  const ImageAltTextWrapper({super.key, required this.altText});
-
-  @override
-  State<ImageAltTextWrapper> createState() => _ImageAltTextWrapperState();
-}
-
-class _ImageAltTextWrapperState extends State<ImageAltTextWrapper> {
-  final GlobalKey textKey = GlobalKey();
-  bool altTextIsLong = false;
-
-  @override
-  void initState() {
-    super.initState();
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      setState(() {
-        altTextIsLong = (textKey.currentContext?.size?.height ?? 0) > 40;
-      });
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
-    final AppLocalizations l10n = AppLocalizations.of(context)!;
-
-    return AnimatedCrossFade(
-      crossFadeState: altTextIsLong ? CrossFadeState.showSecond : CrossFadeState.showFirst,
-      duration: const Duration(milliseconds: 250),
-      firstChild: ImageAltText(key: textKey, altText: widget.altText),
-      secondChild: ExpandableNotifier(
-        child: Expandable(
-          expanded: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              ImageAltText(altText: widget.altText),
-              ExpandableButton(
-                theme: const ExpandableThemeData(useInkWell: false),
-                child: Text(
-                  l10n.showLess,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: Colors.white.withValues(alpha: 0.5),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          collapsed: Stack(
-            children: [
-              LimitedBox(
-                maxHeight: 60,
-                child: ShaderMask(
-                  shaderCallback: (bounds) {
-                    return const LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        Colors.black,
-                        Colors.transparent,
-                        Colors.transparent,
-                      ],
-                      stops: [0.0, 0.8, 1.0],
-                    ).createShader(bounds);
-                  },
-                  blendMode: BlendMode.dstIn,
-                  child: ImageAltText(altText: widget.altText),
-                ),
-              ),
-              Positioned(
-                bottom: 0,
-                child: ExpandableButton(
-                  theme: const ExpandableThemeData(useInkWell: false),
-                  child: Text(
-                    l10n.showMore,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: Colors.white.withValues(alpha: 0.5),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class ImageAltText extends StatelessWidget {
-  final String altText;
+  /// The text to display
+  final String text;
 
-  const ImageAltText({
-    super.key,
-    required this.altText,
-  });
+  const ImageAltText({super.key, required this.text});
 
   @override
   Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
+    final theme = Theme.of(context);
 
     return Text(
-      key: key,
-      altText,
+      text,
       style: theme.textTheme.bodyMedium?.copyWith(
         color: Colors.white.withValues(alpha: 0.90),
         shadows: [

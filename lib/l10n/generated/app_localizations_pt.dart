@@ -1087,6 +1087,9 @@ class AppLocalizationsPt extends AppLocalizations {
       'Swipe anywhere to go back when left-to-right gestures are disabled';
 
   @override
+  String get fullscreen => 'Fullscreen';
+
+  @override
   String get fullscreenSwipeGestures => 'Fullscreen Swipe Gestures';
 
   @override

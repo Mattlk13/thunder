@@ -1275,6 +1275,10 @@
   },
   "fullScreenNavigationSwipeDescription": "Swipe anywhere to go back when left-to-right gestures are disabled",
   "@fullScreenNavigationSwipeDescription": {},
+  "fullscreen": "Fullscreen",
+  "@fullscreen": {
+    "description": "Action for entering fullscreen"
+  },
   "fullscreenSwipeGestures": "Fullscreen Swipe Gestures",
   "@fullscreenSwipeGestures": {
     "description": "Setting for fullscreen swipe gestures"

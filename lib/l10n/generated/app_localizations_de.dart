@@ -1095,6 +1095,9 @@ class AppLocalizationsDe extends AppLocalizations {
       'Wische irgendwohin, um zurückzugehen, wenn die Links-nach-Rechts-Gesten deaktiviert sind';
 
   @override
+  String get fullscreen => 'Fullscreen';
+
+  @override
   String get fullscreenSwipeGestures => 'Wischgesten im Vollbildmodus';
 
   @override

@@ -1093,6 +1093,9 @@ class AppLocalizationsTa extends AppLocalizations {
       'இடமிருந்து வலமாக சைகைகள் முடக்கப்பட்டிருக்கும் போது திரும்பிச் செல்ல எங்கும் ச்வைப் செய்யவும்';
 
   @override
+  String get fullscreen => 'Fullscreen';
+
+  @override
   String get fullscreenSwipeGestures => 'முழுத்திரை ச்வைப் சைகைகள்';
 
   @override

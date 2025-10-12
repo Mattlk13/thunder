@@ -2012,6 +2012,12 @@ abstract class AppLocalizations {
   /// **'Swipe anywhere to go back when left-to-right gestures are disabled'**
   String get fullScreenNavigationSwipeDescription;
 
+  /// Action for entering fullscreen
+  ///
+  /// In en, this message translates to:
+  /// **'Fullscreen'**
+  String get fullscreen;
+
   /// Setting for fullscreen swipe gestures
   ///
   /// In en, this message translates to:

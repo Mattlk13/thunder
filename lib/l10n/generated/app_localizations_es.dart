@@ -1102,6 +1102,9 @@ class AppLocalizationsEs extends AppLocalizations {
       'Desliza el dedo en cualquier lugar para volver atrás cuando los gestos de izquierda a derecha estén desactivados';
 
   @override
+  String get fullscreen => 'Fullscreen';
+
+  @override
   String get fullscreenSwipeGestures =>
       'Gestos de deslizamiento a pantalla completa';
 

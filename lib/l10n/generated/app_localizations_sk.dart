@@ -1086,6 +1086,9 @@ class AppLocalizationsSk extends AppLocalizations {
       'Potiahnite prstom kdekoľvek, aby ste sa vrátili späť, keď sú gestá zľava doprava vypnuté';
 
   @override
+  String get fullscreen => 'Fullscreen';
+
+  @override
   String get fullscreenSwipeGestures => 'Gestá posunutia obrazovky';
 
   @override

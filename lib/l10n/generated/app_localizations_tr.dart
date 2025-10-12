@@ -1086,6 +1086,9 @@ class AppLocalizationsTr extends AppLocalizations {
       'Soldan sağa hareketler devre dışı bırakıldığında geri gitmek için herhangi bir yere kaydırın';
 
   @override
+  String get fullscreen => 'Fullscreen';
+
+  @override
   String get fullscreenSwipeGestures => 'Tam Ekran Kaydırma Hareketleri';
 
   @override
