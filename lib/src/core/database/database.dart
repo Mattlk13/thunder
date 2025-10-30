@@ -38,46 +38,72 @@ class AppDatabase extends _$AppDatabase {
       onUpgrade: (m, from, to) async {
         await customStatement('PRAGMA foreign_keys = OFF');
 
-        await m.runMigrationSteps(
-          from: from,
-          to: to,
-          steps: migrationSteps(
-            from1To2: (m, schema) async {
-              // Create the UserLabels table
-              await m.createTable(schema.userLabels);
-            },
-            from2To3: (m, schema) async {
-              // Create the Drafts table
-              await m.createTable(schema.drafts);
-            },
-            from3To4: (m, schema) async {
-              // Create the custom_thumbnail column on the drafts table
-              await m.addColumn(schema.drafts, schema.drafts.customThumbnail);
-            },
-            from4To5: (m, schema) async {
-              // Add the list_index column to the Accounts table and use id as the default value
-              await m.addColumn(schema.accounts, schema.accounts.listIndex);
-              await customStatement('UPDATE accounts SET list_index = id');
-            },
-            from5To6: (m, schema) async {
-              // Create the alt_text column on the drafts table
-              await m.addColumn(schema.drafts, schema.drafts.altText);
-            },
-            from6To7: (m, schema) async {
-              // Add the platform column to the Accounts table and pre-fill existing accounts with 'lemmy'
-              await m.addColumn(schema.accounts, schema.accounts.platform);
-              await customStatement('UPDATE accounts SET platform = \'lemmy\'');
-            },
-          ),
-        );
+        try {
+          await m.runMigrationSteps(
+            from: from,
+            to: to,
+            steps: migrationSteps(
+              from1To2: (m, schema) async {
+                // Create the UserLabels table
+                await m.createTable(schema.userLabels);
+              },
+              from2To3: (m, schema) async {
+                // Create the Drafts table
+                await m.createTable(schema.drafts);
+              },
+              from3To4: (m, schema) async {
+                try {
+                  await customStatement('SELECT custom_thumbnail FROM drafts LIMIT 1');
+                } catch (e) {
+                  // Create the custom_thumbnail column on the drafts table
+                  await m.addColumn(schema.drafts, schema.drafts.customThumbnail);
+                }
+              },
+              from4To5: (m, schema) async {
+                try {
+                  await customStatement('SELECT list_index FROM accounts LIMIT 1');
+                } catch (e) {
+                  // Add the list_index column to the Accounts table and use id as the default value
+                  await m.addColumn(schema.accounts, schema.accounts.listIndex);
+                  await customStatement('UPDATE accounts SET list_index = id');
+                }
+              },
+              from5To6: (m, schema) async {
+                try {
+                  await customStatement('SELECT alt_text FROM drafts LIMIT 1');
+                } catch (e) {
+                  // Create the alt_text column on the drafts table
+                  await m.addColumn(schema.drafts, schema.drafts.altText);
+                }
+              },
+              from6To7: (m, schema) async {
+                try {
+                  await customStatement('SELECT platform FROM accounts LIMIT 1');
 
-        if (kDebugMode) {
-          // Fail if the migration broke foreign keys
-          final wrongForeignKeys = await customSelect('PRAGMA foreign_key_check').get();
-          assert(wrongForeignKeys.isEmpty, '${wrongForeignKeys.map((e) => e.data)}');
+                  // Check to see if any accounts have a null platform. If so, set it to 'lemmy'.
+                  // This can happen if the database was partially migrated (e.g., The platform  column was added, but the migration was not completed.)
+                  final accounts = await customSelect('SELECT * FROM accounts WHERE platform IS NULL').get();
+                  if (accounts.isNotEmpty) {
+                    debugPrint('Found ${accounts.length} accounts with null platform. Setting to lemmy.');
+                    await customStatement('UPDATE accounts SET platform = \'lemmy\'');
+                  }
+                } catch (e) {
+                  // Add the platform column to the Accounts table and pre-fill existing accounts with 'lemmy'
+                  await m.addColumn(schema.accounts, schema.accounts.platform);
+                  await customStatement('UPDATE accounts SET platform = \'lemmy\'');
+                }
+              },
+            ),
+          );
+
+          if (kDebugMode) {
+            // Fail if the migration broke foreign keys
+            final wrongForeignKeys = await customSelect('PRAGMA foreign_key_check').get();
+            assert(wrongForeignKeys.isEmpty, '${wrongForeignKeys.map((e) => e.data)}');
+          }
+        } finally {
+          await customStatement('PRAGMA foreign_keys = ON');
         }
-
-        await customStatement('PRAGMA foreign_keys = ON;');
       },
       beforeOpen: (details) async {
         if (details.versionBefore != null && details.versionBefore! > details.versionNow) {
@@ -92,14 +118,17 @@ class AppDatabase extends _$AppDatabase {
 Future<void> _onDowngrade(AppDatabase database, int fromVersion, int toVersion) async {
   await database.customStatement('PRAGMA foreign_keys = OFF');
 
-  int current = fromVersion;
-  while (current > toVersion) {
-    int target = current - 1;
-    await _onDownGradeOneStep(database, current, target);
-    current = target;
-  }
+  try {
+    int current = fromVersion;
 
-  await database.customStatement('PRAGMA foreign_keys=ON;');
+    while (current > toVersion) {
+      int target = current - 1;
+      await _onDownGradeOneStep(database, current, target);
+      current = target;
+    }
+  } finally {
+    await database.customStatement('PRAGMA foreign_keys = ON');
+  }
 }
 
 Future<void> _onDownGradeOneStep(AppDatabase database, int fromVersion, int toVersion) async {
