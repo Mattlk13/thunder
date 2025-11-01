@@ -132,6 +132,9 @@ jobs:
           done < "ios/Open In Thunder/Resources/content.js"
           mv "ios/Open In Thunder/Resources/content-new.js" "ios/Open In Thunder/Resources/content.js"
 
+          # Clean up temporary txt files
+          rm lemmy-instances.txt piefed-instances.txt instances.txt
+
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v6.0.1
         with:
