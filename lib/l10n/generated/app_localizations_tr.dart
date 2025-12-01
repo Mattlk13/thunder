@@ -1127,6 +1127,9 @@ class AppLocalizationsTr extends AppLocalizations {
   String get hide => 'Gizle';
 
   @override
+  String get hideBottomBarOnScroll => 'Hide Bottom Bar on Scroll';
+
+  @override
   String get hideColor => 'Gizleme Rengi';
 
   @override

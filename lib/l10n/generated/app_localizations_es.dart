@@ -1144,6 +1144,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get hide => 'Ocultar';
 
   @override
+  String get hideBottomBarOnScroll => 'Hide Bottom Bar on Scroll';
+
+  @override
   String get hideColor => 'Ocultar el color';
 
   @override
