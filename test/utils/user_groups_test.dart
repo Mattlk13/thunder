@@ -2,16 +2,20 @@ import 'package:flutter/material.dart';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:thunder/src/core/enums/user_type.dart';
-import 'package:thunder/src/app/theme/bloc/theme_bloc.dart';
+import 'package:thunder/src/core/singletons/preferences.dart';
+import 'package:thunder/src/app/cubits/theme_preferences_cubit/theme_preferences_cubit.dart';
 import 'package:thunder/src/features/user/user.dart';
 
 import '../widgets/base_widget.dart';
 
 void main() {
-  setUpAll(() {
+  setUpAll(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
+    SharedPreferences.setMockInitialValues({});
+    await UserPreferences.instance.initialize();
   });
 
   group('Test user group logic', () {
@@ -39,7 +43,7 @@ void main() {
     testWidgets('fetchUsernameColor returns no color if user is in no groups', (tester) async {
       await tester.pumpWidget(BaseWidget(
         child: BlocProvider(
-          create: (context) => ThemeBloc(),
+          create: (context) => ThemePreferencesCubit(),
           child: Builder(builder: (context) {
             Color? color = fetchUserGroupColor(context, []);
 
@@ -53,7 +57,7 @@ void main() {
     testWidgets('fetchUsernameColor returns correct color if user is in a single group', (tester) async {
       await tester.pumpWidget(BaseWidget(
         child: BlocProvider(
-          create: (context) => ThemeBloc(),
+          create: (context) => ThemePreferencesCubit(),
           child: Builder(builder: (context) {
             final theme = Theme.of(context);
 
@@ -72,7 +76,7 @@ void main() {
     testWidgets('fetchUsernameColor returns correct color if user is in multiple groups', (tester) async {
       await tester.pumpWidget(BaseWidget(
         child: BlocProvider(
-          create: (context) => ThemeBloc(),
+          create: (context) => ThemePreferencesCubit(),
           child: Builder(builder: (context) {
             final theme = Theme.of(context);
 
