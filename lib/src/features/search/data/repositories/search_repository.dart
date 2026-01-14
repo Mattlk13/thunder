@@ -9,7 +9,7 @@ import 'package:thunder/src/features/community/community.dart';
 import 'package:thunder/src/core/network/piefed_api.dart';
 import 'package:thunder/src/core/enums/feed_list_type.dart';
 import 'package:thunder/src/core/enums/meta_search_type.dart';
-import 'package:thunder/src/core/enums/post_sort_type.dart';
+import 'package:thunder/src/core/enums/search_sort_type.dart';
 import 'package:thunder/src/features/account/account.dart';
 import 'package:thunder/src/core/enums/threadiverse_platform.dart';
 import 'package:thunder/src/features/post/post.dart';
@@ -23,7 +23,7 @@ abstract class SearchRepository {
   Future<Map<String, dynamic>> search({
     required String query,
     MetaSearchType? type,
-    PostSortType? sort,
+    SearchSortType? sort,
     FeedListType? listingType,
     int? limit,
     int? page,
@@ -40,21 +40,21 @@ class SearchRepositoryImpl implements SearchRepository {
   /// The account to use for methods invoked in this repository
   Account account;
 
-  /// The Lemmy client to use for the repository
-  late LemmyApi lemmy;
+  /// The Lemmy client to use for the repository (initialized for Lemmy platforms)
+  LemmyApi? _lemmy;
 
-  /// The Piefed client to use for the repository
-  late PiefedApi piefed;
+  /// The Piefed client to use for the repository (initialized for Piefed platforms)
+  PiefedApi? _piefed;
 
   SearchRepositoryImpl({required this.account}) {
     final version = PlatformVersionCache().get(account.instance);
 
     switch (account.platform) {
       case ThreadiversePlatform.lemmy:
-        lemmy = LemmyApi(account: account, debug: kDebugMode, version: version);
+        _lemmy = LemmyApi(account: account, debug: kDebugMode, version: version);
         break;
       case ThreadiversePlatform.piefed:
-        piefed = PiefedApi(account: account, debug: kDebugMode, version: version);
+        _piefed = PiefedApi(account: account, debug: kDebugMode, version: version);
         break;
       default:
         throw Exception('Unsupported platform: ${account.platform}');
@@ -65,7 +65,7 @@ class SearchRepositoryImpl implements SearchRepository {
   Future<Map<String, dynamic>> search({
     required String query,
     MetaSearchType? type,
-    PostSortType? sort,
+    SearchSortType? sort,
     FeedListType? listingType,
     int? limit,
     int? page,
@@ -74,6 +74,7 @@ class SearchRepositoryImpl implements SearchRepository {
   }) async {
     switch (account.platform) {
       case ThreadiversePlatform.lemmy:
+        final lemmy = _lemmy!;
         final response = await lemmy.search(
           query: query,
           type: type,
@@ -112,6 +113,7 @@ class SearchRepositoryImpl implements SearchRepository {
           'users': users,
         };
       case ThreadiversePlatform.piefed:
+        final piefed = _piefed!;
         final response = await piefed.search(
           query: query,
           type: type,
@@ -156,9 +158,9 @@ class SearchRepositoryImpl implements SearchRepository {
   Future<Map<String, dynamic>> resolve({required String query}) async {
     switch (account.platform) {
       case ThreadiversePlatform.lemmy:
-        return await lemmy.resolve(query: query);
+        return await _lemmy!.resolve(query: query);
       case ThreadiversePlatform.piefed:
-        return await piefed.resolve(query: query);
+        return await _piefed!.resolve(query: query);
       default:
         throw Exception('Unsupported platform: ${account.platform}');
     }
