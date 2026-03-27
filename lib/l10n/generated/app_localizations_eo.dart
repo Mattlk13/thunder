@@ -1837,6 +1837,13 @@ class AppLocalizationsEo extends AppLocalizations {
   String get postCreatedSuccessfully => 'Post created successfully!';
 
   @override
+  String get postFlairs => 'Flairs';
+
+  @override
+  String get postFlairsUnavailable =>
+      'No flair options available for this community';
+
+  @override
   String get postLocked => 'Afiŝo ŝlosita. Neniuj respondoj permesitaj.';
 
   @override
@@ -1862,6 +1869,12 @@ class AppLocalizationsEo extends AppLocalizations {
   @override
   String get postSwipeGesturesHint =>
       'Ĉu vi volas uzi butonojn anstataŭe? Ŝanĝu kiajn butonojn aperas sur afiŝkartoj en ĝeneralaj agordoj.';
+
+  @override
+  String get postTags => 'Tags';
+
+  @override
+  String get postTagsHelperText => 'Separate tags with commas';
 
   @override
   String get postTitle => 'Titolo';

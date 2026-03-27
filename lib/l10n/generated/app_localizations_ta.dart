@@ -1882,6 +1882,13 @@ class AppLocalizationsTa extends AppLocalizations {
   String get postCreatedSuccessfully => 'இடுகை வெற்றிகரமாக உருவாக்கப்பட்டது!';
 
   @override
+  String get postFlairs => 'Flairs';
+
+  @override
+  String get postFlairsUnavailable =>
+      'No flair options available for this community';
+
+  @override
   String get postLocked =>
       'இடுகை பூட்டப்பட்டுள்ளது. பதில்கள் எதுவும் அனுமதிக்கப்படவில்லை.';
 
@@ -1908,6 +1915,12 @@ class AppLocalizationsTa extends AppLocalizations {
   @override
   String get postSwipeGesturesHint =>
       'அதற்கு பதிலாக பொத்தான்களைப் பயன்படுத்த விரும்புகிறீர்களா? பொது அமைப்புகளில் தபால் அட்டைகளில் பொத்தான்கள் தோன்றுவதை மாற்றவும்.';
+
+  @override
+  String get postTags => 'Tags';
+
+  @override
+  String get postTagsHelperText => 'Separate tags with commas';
 
   @override
   String get postTitle => 'தலைப்பு';

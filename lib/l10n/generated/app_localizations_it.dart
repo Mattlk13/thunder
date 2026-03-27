@@ -1853,6 +1853,13 @@ class AppLocalizationsIt extends AppLocalizations {
   String get postCreatedSuccessfully => 'Post creato con successo!';
 
   @override
+  String get postFlairs => 'Flairs';
+
+  @override
+  String get postFlairsUnavailable =>
+      'No flair options available for this community';
+
+  @override
   String get postLocked => 'Il post è bloccato. Non è permesso rispondere.';
 
   @override
@@ -1878,6 +1885,12 @@ class AppLocalizationsIt extends AppLocalizations {
   @override
   String get postSwipeGesturesHint =>
       'Preferisci usare i pulsanti? Cambia quali pulsanti compaiono nelle schermate dei post nelle impostazioni generali.';
+
+  @override
+  String get postTags => 'Tags';
+
+  @override
+  String get postTagsHelperText => 'Separate tags with commas';
 
   @override
   String get postTitle => 'Titolo';

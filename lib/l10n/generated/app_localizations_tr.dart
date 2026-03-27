@@ -1857,6 +1857,13 @@ class AppLocalizationsTr extends AppLocalizations {
   String get postCreatedSuccessfully => 'Gönderi başarıyla oluşturuldu!';
 
   @override
+  String get postFlairs => 'Flairs';
+
+  @override
+  String get postFlairsUnavailable =>
+      'No flair options available for this community';
+
+  @override
   String get postLocked => 'Gönderi kilitli. Yanıtlara izin verilmiyor.';
 
   @override
@@ -1882,6 +1889,12 @@ class AppLocalizationsTr extends AppLocalizations {
   @override
   String get postSwipeGesturesHint =>
       'Bunun yerine düğmeleri mi kullanmak istiyorsunuz? Genel ayarlarda gönderi kartlarında hangi düğmelerin görüneceğini değiştirin.';
+
+  @override
+  String get postTags => 'Tags';
+
+  @override
+  String get postTagsHelperText => 'Separate tags with commas';
 
   @override
   String get postTitle => 'Başlık';

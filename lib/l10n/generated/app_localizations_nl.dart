@@ -1868,6 +1868,13 @@ class AppLocalizationsNl extends AppLocalizations {
   String get postCreatedSuccessfully => 'Bericht succesvol aangemaakt!';
 
   @override
+  String get postFlairs => 'Flairs';
+
+  @override
+  String get postFlairsUnavailable =>
+      'No flair options available for this community';
+
+  @override
   String get postLocked => 'Bericht vergrendeld. Geen reacties toegestaan.';
 
   @override
@@ -1893,6 +1900,12 @@ class AppLocalizationsNl extends AppLocalizations {
   @override
   String get postSwipeGesturesHint =>
       'Wilt u liever knoppen gebruiken? Wĳzig welke knoppen worden weergegeven op berichtkaarten in de algemene instellingen.';
+
+  @override
+  String get postTags => 'Tags';
+
+  @override
+  String get postTagsHelperText => 'Separate tags with commas';
 
   @override
   String get postTitle => 'Titel';
