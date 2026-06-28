@@ -1,21 +1,15 @@
-import 'dart:async';
-
 import 'package:flutter/foundation.dart';
 
-import 'package:thunder/src/foundation/config/global_context.dart';
-import 'package:thunder/src/foundation/errors/errors.dart';
-import 'package:thunder/src/foundation/networking/networking.dart';
-import 'package:thunder/src/foundation/primitives/primitives.dart';
-import 'package:thunder/src/features/account/account.dart';
+import 'package:thunder/src/foundation/foundation.dart';
 import 'package:thunder/src/features/post/post.dart';
 
-/// Interface for a post repository
+/// Repository contract for post reads and mutations.
 abstract class PostRepository {
   /// Fetches a post by its ID. Returns the post along with moderators and cross-posts information
-  Future<Map<String, dynamic>?> getPost(int postId, {int? commentId});
+  Future<PostDetail?> getPost(int postId, {int? commentId});
 
   /// Fetches posts from the API
-  Future<Map<String, dynamic>> getPosts({
+  Future<PostList> getPosts({
     String? cursor,
     int? limit,
     FeedListType? feedListType,
@@ -43,30 +37,21 @@ abstract class PostRepository {
     List<String>? tags,
     List<int>? flairIds,
     bool? nsfw,
-    int? postIdBeingEdited,
     int? languageId,
   });
 
-  /// Creates a placeholder post from the given parameters. This is mainly used to display a preview of the post
-  /// with the applied settings on Settings -> Appearance -> Posts page.
-  Future<ThunderPost?> createExample({
-    String? postTitle,
-    String? postUrl,
-    String? postBody,
-    String? postThumbnailUrl,
-    String? postAltText,
-    bool? locked,
+  /// Edits an existing post
+  Future<ThunderPost> edit({
+    required int postId,
+    required String name,
+    String? body,
+    String? url,
+    String? customThumbnail,
+    String? altText,
+    List<String>? tags,
+    List<int>? flairIds,
     bool? nsfw,
-    bool? pinned,
-    String? personName,
-    String? personDisplayName,
-    String? personInstance,
-    String? communityName,
-    String? instanceUrl,
-    int? commentCount,
-    int? scoreCount,
-    bool? saved,
-    bool? read,
+    int? languageId,
   });
 
   /// Votes on a post
@@ -100,7 +85,7 @@ abstract class PostRepository {
   Future<void> report(int postId, String reason);
 }
 
-/// Implementation of [PostRepository]
+/// Implementation of [PostRepository] using the unified API client
 class PostRepositoryImpl implements PostRepository {
   /// The account to use for methods invoked in this repository
   final Account account;
@@ -108,29 +93,35 @@ class PostRepositoryImpl implements PostRepository {
   /// The API client to use for the repository
   final ThunderApiClient _api;
 
+  /// The localization service to use for user-facing errors
+  final LocalizationService _localization;
+
   /// Creates a new PostRepositoryImpl.
   ///
-  /// An optional [api] client can be provided for testing.
-  PostRepositoryImpl({required this.account, ThunderApiClient? api}) : _api = api ?? ApiClientFactory.create(account, debug: kDebugMode);
+  /// An optional [api] client and [localization] can be provided for testing.
+  PostRepositoryImpl({
+    required this.account,
+    ThunderApiClient? api,
+    LocalizationService localization = const ThunderLocalizationService(),
+  })  : _api = api ?? ApiClientFactory.create(account, debug: kDebugMode),
+        _localization = localization;
 
   @override
-  Future<Map<String, dynamic>?> getPost(int postId, {int? commentId}) async {
+  Future<PostDetail?> getPost(int postId, {int? commentId}) async {
     final response = await _api.getPost(postId, commentId: commentId);
 
     final parsedPost = await parsePostWithCurrentPreferences(response.post);
     final parsedCrossPosts = await Future.wait(response.crossPosts.map(parsePostWithCurrentPreferences));
 
-    return {
-      'post': parsedPost,
-      'moderators': response.moderators,
-      'cross_posts': parsedCrossPosts,
-      // Keep camelCase key for existing consumers.
-      'crossPosts': parsedCrossPosts,
-    };
+    return PostDetail(
+      post: parsedPost,
+      moderators: response.moderators,
+      crossPosts: parsedCrossPosts,
+    );
   }
 
   @override
-  Future<Map<String, dynamic>> getPosts({
+  Future<PostList> getPosts({
     String? cursor,
     int? limit,
     int? personId,
@@ -163,10 +154,10 @@ class PostRepositoryImpl implements PostRepository {
       showSaved: showSaved,
     );
 
-    return {
-      'posts': response.posts,
-      'next_page': response.nextPage,
-    };
+    return PostList(
+      posts: await parsePosts(response.posts),
+      nextPage: response.nextPage,
+    );
   }
 
   @override
@@ -180,41 +171,56 @@ class PostRepositoryImpl implements PostRepository {
     List<String>? tags,
     List<int>? flairIds,
     bool? nsfw,
-    int? postIdBeingEdited,
     int? languageId,
   }) async {
-    final l10n = GlobalContext.l10n;
-    if (account.anonymous) throw Exception(l10n.userNotLoggedIn);
+    final l10n = _localization.l10n;
+    if (account.anonymous) throw NotLoggedInException(l10n.userNotLoggedIn);
 
-    ThunderPost response;
+    final response = await _api.createPostWithMetadata(
+      communityId: communityId,
+      title: name,
+      contents: body,
+      url: url?.isEmpty == true ? null : url,
+      customThumbnail: customThumbnail?.isEmpty == true ? null : customThumbnail,
+      altText: altText?.isEmpty == true ? null : altText,
+      tags: tags,
+      flairIds: flairIds,
+      nsfw: nsfw,
+      languageId: languageId,
+    );
 
-    if (postIdBeingEdited != null) {
-      response = await _api.editPostWithMetadata(
-        postId: postIdBeingEdited,
-        title: name,
-        contents: body,
-        url: url?.isEmpty == true ? null : url,
-        customThumbnail: customThumbnail?.isEmpty == true ? null : customThumbnail,
-        altText: altText?.isEmpty == true ? null : altText,
-        tags: tags,
-        flairIds: flairIds,
-        nsfw: nsfw,
-        languageId: languageId,
-      );
-    } else {
-      response = await _api.createPostWithMetadata(
-        communityId: communityId,
-        title: name,
-        contents: body,
-        url: url?.isEmpty == true ? null : url,
-        customThumbnail: customThumbnail?.isEmpty == true ? null : customThumbnail,
-        altText: altText?.isEmpty == true ? null : altText,
-        tags: tags,
-        flairIds: flairIds,
-        nsfw: nsfw,
-        languageId: languageId,
-      );
-    }
+    final posts = await parsePosts([response]);
+    return posts.firstOrNull!;
+  }
+
+  @override
+  Future<ThunderPost> edit({
+    required int postId,
+    required String name,
+    String? body,
+    String? url,
+    String? customThumbnail,
+    String? altText,
+    List<String>? tags,
+    List<int>? flairIds,
+    bool? nsfw,
+    int? languageId,
+  }) async {
+    final l10n = _localization.l10n;
+    if (account.anonymous) throw NotLoggedInException(l10n.userNotLoggedIn);
+
+    final response = await _api.editPostWithMetadata(
+      postId: postId,
+      title: name,
+      contents: body,
+      url: url?.isEmpty == true ? null : url,
+      customThumbnail: customThumbnail?.isEmpty == true ? null : customThumbnail,
+      altText: altText?.isEmpty == true ? null : altText,
+      tags: tags,
+      flairIds: flairIds,
+      nsfw: nsfw,
+      languageId: languageId,
+    );
 
     final posts = await parsePosts([response]);
     return posts.firstOrNull!;
@@ -222,8 +228,8 @@ class PostRepositoryImpl implements PostRepository {
 
   @override
   Future<ThunderPost> vote(ThunderPost post, int score) async {
-    final l10n = GlobalContext.l10n;
-    if (account.anonymous) throw Exception(l10n.userNotLoggedIn);
+    final l10n = _localization.l10n;
+    if (account.anonymous) throw NotLoggedInException(l10n.userNotLoggedIn);
 
     final response = await _api.votePost(postId: post.id, score: score);
     return response.copyWith(media: post.media);
@@ -231,8 +237,8 @@ class PostRepositoryImpl implements PostRepository {
 
   @override
   Future<ThunderPost> save(ThunderPost post, bool save) async {
-    final l10n = GlobalContext.l10n;
-    if (account.anonymous) throw Exception(l10n.userNotLoggedIn);
+    final l10n = _localization.l10n;
+    if (account.anonymous) throw NotLoggedInException(l10n.userNotLoggedIn);
 
     final response = await _api.savePost(postId: post.id, save: save);
     return response.copyWith(media: post.media);
@@ -240,16 +246,16 @@ class PostRepositoryImpl implements PostRepository {
 
   @override
   Future<bool> read(int postId, bool read) async {
-    final l10n = GlobalContext.l10n;
-    if (account.anonymous) throw Exception(l10n.userNotLoggedIn);
+    final l10n = _localization.l10n;
+    if (account.anonymous) throw NotLoggedInException(l10n.userNotLoggedIn);
 
-    return await _api.readPost(postIds: [postId], read: read);
+    return _api.readPost(postIds: [postId], read: read);
   }
 
   @override
   Future<List<int>> readMultiple(List<int> postIds, bool read) async {
-    final l10n = GlobalContext.l10n;
-    if (account.anonymous) throw Exception(l10n.userNotLoggedIn);
+    final l10n = _localization.l10n;
+    if (account.anonymous) throw NotLoggedInException(l10n.userNotLoggedIn);
 
     final success = await _api.readPost(postIds: postIds, read: read);
     return success ? [] : List<int>.generate(postIds.length, (index) => index);
@@ -257,127 +263,53 @@ class PostRepositoryImpl implements PostRepository {
 
   @override
   Future<bool> hide(int postId, bool hide) async {
-    final l10n = GlobalContext.l10n;
-    if (account.anonymous) throw Exception(l10n.userNotLoggedIn);
+    final l10n = _localization.l10n;
+    if (account.anonymous) throw NotLoggedInException(l10n.userNotLoggedIn);
 
     if (!_api.supportsHidePosts) {
       throw UnsupportedFeatureException('Hiding posts', platformName: _api.platformName);
     }
 
-    return await _api.hidePost(postId: postId, hide: hide);
+    return _api.hidePost(postId: postId, hide: hide);
   }
 
   @override
   Future<bool> delete(int postId, bool delete) async {
-    final l10n = GlobalContext.l10n;
-    if (account.anonymous) throw Exception(l10n.userNotLoggedIn);
+    final l10n = _localization.l10n;
+    if (account.anonymous) throw NotLoggedInException(l10n.userNotLoggedIn);
 
-    return await _api.deletePost(postId: postId, deleted: delete);
+    return _api.deletePost(postId: postId, deleted: delete);
   }
 
   @override
   Future<bool> lock(int postId, bool lock) async {
-    final l10n = GlobalContext.l10n;
-    if (account.anonymous) throw Exception(l10n.userNotLoggedIn);
+    final l10n = _localization.l10n;
+    if (account.anonymous) throw NotLoggedInException(l10n.userNotLoggedIn);
 
-    return await _api.lockPost(postId: postId, locked: lock);
+    return _api.lockPost(postId: postId, locked: lock);
   }
 
   @override
   Future<bool> pinCommunity(int postId, bool pin) async {
-    final l10n = GlobalContext.l10n;
-    if (account.anonymous) throw Exception(l10n.userNotLoggedIn);
+    final l10n = _localization.l10n;
+    if (account.anonymous) throw NotLoggedInException(l10n.userNotLoggedIn);
 
-    return await _api.pinPost(postId: postId, pinned: pin);
+    return _api.pinPost(postId: postId, pinned: pin);
   }
 
   @override
   Future<bool> remove(int postId, bool remove, String reason) async {
-    final l10n = GlobalContext.l10n;
-    if (account.anonymous) throw Exception(l10n.userNotLoggedIn);
+    final l10n = _localization.l10n;
+    if (account.anonymous) throw NotLoggedInException(l10n.userNotLoggedIn);
 
-    return await _api.removePost(postId: postId, removed: remove, reason: reason);
+    return _api.removePost(postId: postId, removed: remove, reason: reason);
   }
 
   @override
   Future<void> report(int postId, String reason) async {
-    final l10n = GlobalContext.l10n;
-    if (account.anonymous) throw Exception(l10n.userNotLoggedIn);
+    final l10n = _localization.l10n;
+    if (account.anonymous) throw NotLoggedInException(l10n.userNotLoggedIn);
 
     await _api.reportPost(postId: postId, reason: reason);
-  }
-
-  @override
-  Future<ThunderPost?> createExample({
-    String? postTitle,
-    String? postUrl,
-    String? postBody,
-    String? postThumbnailUrl,
-    String? postAltText,
-    bool? locked,
-    bool? nsfw,
-    bool? pinned,
-    String? personName,
-    String? personDisplayName,
-    String? personInstance,
-    String? communityName,
-    String? instanceUrl,
-    int? commentCount,
-    int? scoreCount,
-    bool? saved,
-    bool? read,
-  }) async {
-    ThunderPost post = ThunderPost(
-      id: 1,
-      name: postTitle ?? 'Example Title',
-      url: postUrl,
-      body: postBody,
-      thumbnailUrl: postThumbnailUrl,
-      altText: postAltText,
-      creatorId: 1,
-      communityId: 1,
-      published: DateTime.now(),
-      apId: '',
-      languageId: 0,
-      status: PostStatus(
-        deleted: false,
-        removed: false,
-        locked: locked ?? false,
-        nsfw: nsfw ?? false,
-        local: false,
-        featuredCommunity: pinned ?? false,
-        featuredLocal: false,
-      ),
-      creator: ThunderUser(
-        id: 1,
-        name: personName ?? 'Example Username',
-        displayName: personDisplayName ?? 'Example Name',
-        published: DateTime.now(),
-        actorId: 'https://$personInstance/u/$personName',
-        instanceId: 1,
-        status: const UserStatus(banned: false, local: false, deleted: false, botAccount: false),
-      ),
-      community: ThunderCommunity(
-        id: 1,
-        name: communityName ?? 'Example Community',
-        title: '',
-        published: DateTime.now(),
-        actorId: instanceUrl ?? 'https://thunder.lemmy',
-        instanceId: 1,
-        visibility: 'Public',
-        status: const CommunityStatus(removed: false, deleted: false, nsfw: false, local: false, hidden: false, postingRestrictedToMods: false),
-      ),
-      counts: PostCounts(comments: commentCount ?? 0, score: scoreCount ?? 0, upvotes: 0, downvotes: 0, newestCommentAt: DateTime.now(), unreadComments: 0),
-      context: PostContext(
-        creatorBannedFromCommunity: false,
-        subscribed: SubscriptionStatus.notSubscribed,
-        saved: saved ?? false,
-        read: read ?? false,
-        creatorBlocked: false,
-      ),
-    );
-
-    List<ThunderPost> posts = await parsePosts([post]);
-    return Future.value(posts.firstOrNull);
   }
 }

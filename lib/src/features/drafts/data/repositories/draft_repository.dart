@@ -1,11 +1,10 @@
-import 'package:flutter/foundation.dart';
-
 import 'package:drift/drift.dart';
 
 import 'package:thunder/src/features/drafts/data/models/draft.dart';
 import 'package:thunder/src/foundation/persistence/persistence.dart';
 import 'package:thunder/src/foundation/primitives/enums/draft_type.dart';
 
+/// Repository contract for local draft persistence.
 abstract class DraftRepository {
   /// Upsert a draft into the database.
   Future<Draft?> upsertDraft(Draft draft, {bool active = false});
@@ -32,6 +31,7 @@ abstract class DraftRepository {
   Future<void> deleteDraft(DraftType draftType, int? existingId, int? replyId);
 }
 
+/// Implementation of [DraftRepository] backed by local Drift storage.
 class DraftRepositoryImpl implements DraftRepository {
   DraftRepositoryImpl({required AppDatabase database}) : _database = database;
 
@@ -41,59 +41,37 @@ class DraftRepositoryImpl implements DraftRepository {
 
   @override
   Future<Draft?> upsertDraft(Draft draft, {bool active = false}) async {
-    try {
-      final Draft normalizedDraft = _normalizeDraftForStorage(draft);
-      final List<String> draftTypeSqlValues = _compatibleDraftTypes(normalizedDraft.draftType).map((t) => _draftTypeConverter.toSql(t)).toList();
+    final Draft normalizedDraft = _normalizeDraftForStorage(draft);
+    final List<String> draftTypeSqlValues = _compatibleDraftTypes(normalizedDraft.draftType).map((t) => _draftTypeConverter.toSql(t)).toList();
 
-      return await _database.transaction(() async {
-        if (active) {
-          await clearActiveDraft();
+    return await _database.transaction(() async {
+      if (active) {
+        await clearActiveDraft();
+      }
+
+      final existingDrafts = await (_database.select(_database.drafts)
+            ..where((t) => t.draftType.isIn(draftTypeSqlValues))
+            ..where((t) => normalizedDraft.existingId == null ? t.existingId.isNull() : t.existingId.equals(normalizedDraft.existingId!))
+            ..where((t) => normalizedDraft.replyId == null ? t.replyId.isNull() : t.replyId.equals(normalizedDraft.replyId!)))
+          .get();
+
+      dynamic existingDraft;
+
+      for (final candidate in existingDrafts) {
+        if (candidate.draftType == normalizedDraft.draftType) {
+          existingDraft = candidate;
+          break;
         }
+      }
 
-        final existingDrafts = await (_database.select(_database.drafts)
-              ..where((t) => t.draftType.isIn(draftTypeSqlValues))
-              ..where((t) => normalizedDraft.existingId == null ? t.existingId.isNull() : t.existingId.equals(normalizedDraft.existingId!))
-              ..where((t) => normalizedDraft.replyId == null ? t.replyId.isNull() : t.replyId.equals(normalizedDraft.replyId!)))
-            .get();
+      existingDraft ??= existingDrafts.isNotEmpty ? existingDrafts.first : null;
 
-        dynamic existingDraft;
+      final bool isActive = active ? true : normalizedDraft.active;
 
-        for (final candidate in existingDrafts) {
-          if (candidate.draftType == normalizedDraft.draftType) {
-            existingDraft = candidate;
-            break;
-          }
-        }
-
-        existingDraft ??= existingDrafts.isNotEmpty ? existingDrafts.first : null;
-
-        final bool isActive = active ? true : normalizedDraft.active;
-
-        if (existingDraft == null) {
-          final id = await _database.into(_database.drafts).insert(
-                DraftsCompanion.insert(
-                  draftType: normalizedDraft.draftType,
-                  existingId: Value(normalizedDraft.existingId),
-                  replyId: Value(normalizedDraft.replyId),
-                  active: Value(isActive),
-                  accountId: Value(normalizedDraft.accountId),
-                  title: Value(normalizedDraft.title),
-                  url: Value(normalizedDraft.url),
-                  customThumbnail: Value(normalizedDraft.customThumbnail),
-                  altText: Value(normalizedDraft.altText),
-                  nsfw: Value(normalizedDraft.nsfw),
-                  languageId: Value(normalizedDraft.languageId),
-                  body: Value(normalizedDraft.body),
-                ),
-              );
-
-          return normalizedDraft.copyWith(id: id.toString(), active: isActive);
-        }
-
-        await _database.update(_database.drafts).replace(
-              DraftsCompanion(
-                id: Value(existingDraft.id),
-                draftType: Value(normalizedDraft.draftType),
+      if (existingDraft == null) {
+        final id = await _database.into(_database.drafts).insert(
+              DraftsCompanion.insert(
+                draftType: normalizedDraft.draftType,
                 existingId: Value(normalizedDraft.existingId),
                 replyId: Value(normalizedDraft.replyId),
                 active: Value(isActive),
@@ -108,128 +86,114 @@ class DraftRepositoryImpl implements DraftRepository {
               ),
             );
 
-        return normalizedDraft.copyWith(id: existingDraft.id.toString(), active: isActive);
-      });
-    } catch (e) {
-      debugPrint(e.toString());
-      return null;
-    }
+        return normalizedDraft.copyWith(id: id.toString(), active: isActive);
+      }
+
+      await _database.update(_database.drafts).replace(
+            DraftsCompanion(
+              id: Value(existingDraft.id),
+              draftType: Value(normalizedDraft.draftType),
+              existingId: Value(normalizedDraft.existingId),
+              replyId: Value(normalizedDraft.replyId),
+              active: Value(isActive),
+              accountId: Value(normalizedDraft.accountId),
+              title: Value(normalizedDraft.title),
+              url: Value(normalizedDraft.url),
+              customThumbnail: Value(normalizedDraft.customThumbnail),
+              altText: Value(normalizedDraft.altText),
+              nsfw: Value(normalizedDraft.nsfw),
+              languageId: Value(normalizedDraft.languageId),
+              body: Value(normalizedDraft.body),
+            ),
+          );
+
+      return normalizedDraft.copyWith(id: existingDraft.id.toString(), active: isActive);
+    });
   }
 
   @override
   Future<Draft?> fetchDraft(DraftType draftType, int? existingId, int? replyId) async {
-    try {
-      final List<String> draftTypeSqlValues = _compatibleDraftTypes(draftType).map((t) => _draftTypeConverter.toSql(t)).toList();
-      final drafts = await (_database.select(_database.drafts)
-            ..where((t) => t.draftType.isIn(draftTypeSqlValues))
-            ..where((t) => existingId == null ? t.existingId.isNull() : t.existingId.equals(existingId))
-            ..where((t) => replyId == null ? t.replyId.isNull() : t.replyId.equals(replyId)))
-          .get();
+    final List<String> draftTypeSqlValues = _compatibleDraftTypes(draftType).map((t) => _draftTypeConverter.toSql(t)).toList();
+    final drafts = await (_database.select(_database.drafts)
+          ..where((t) => t.draftType.isIn(draftTypeSqlValues))
+          ..where((t) => existingId == null ? t.existingId.isNull() : t.existingId.equals(existingId))
+          ..where((t) => replyId == null ? t.replyId.isNull() : t.replyId.equals(replyId)))
+        .get();
 
-      if (drafts.isEmpty) return null;
+    if (drafts.isEmpty) return null;
 
-      dynamic draft;
+    dynamic draft;
 
-      for (final candidate in drafts) {
-        if (candidate.draftType == draftType) {
-          draft = candidate;
-          break;
-        }
+    for (final candidate in drafts) {
+      if (candidate.draftType == draftType) {
+        draft = candidate;
+        break;
       }
-
-      draft ??= drafts.first;
-
-      return _toDraft(draft);
-    } catch (e) {
-      debugPrint(e.toString());
-      return null;
     }
+
+    draft ??= drafts.first;
+
+    return _toDraft(draft);
   }
 
   @override
   Future<List<Draft>> fetchAllDrafts() async {
-    try {
-      final drafts = await (_database.select(_database.drafts)
-            ..orderBy([
-              (t) => OrderingTerm(expression: t.active, mode: OrderingMode.desc),
-              (t) => OrderingTerm(expression: t.id, mode: OrderingMode.desc),
-            ]))
-          .get();
+    final drafts = await (_database.select(_database.drafts)
+          ..orderBy([
+            (t) => OrderingTerm(expression: t.active, mode: OrderingMode.desc),
+            (t) => OrderingTerm(expression: t.id, mode: OrderingMode.desc),
+          ]))
+        .get();
 
-      return drafts.map(_toDraft).where((draft) => draft.hasRestorableContent).toList();
-    } catch (e) {
-      debugPrint(e.toString());
-      return const <Draft>[];
-    }
+    return drafts.map(_toDraft).where((draft) => draft.hasRestorableContent).toList();
   }
 
   @override
   Future<Draft?> fetchActiveDraft() async {
-    try {
-      final drafts = await (_database.select(_database.drafts)..where((t) => t.active.equals(true))).get();
+    final drafts = await (_database.select(_database.drafts)..where((t) => t.active.equals(true))).get();
 
-      if (drafts.isEmpty) {
-        return null;
-      }
-
-      return _toDraft(drafts.first);
-    } catch (e) {
-      debugPrint(e.toString());
+    if (drafts.isEmpty) {
       return null;
     }
+
+    return _toDraft(drafts.first);
   }
 
   @override
   Future<void> clearActiveDraft() async {
-    try {
-      await (_database.update(_database.drafts)..where((t) => t.active.equals(true))).write(const DraftsCompanion(active: Value(false)));
-    } catch (e) {
-      debugPrint(e.toString());
-    }
+    await (_database.update(_database.drafts)..where((t) => t.active.equals(true))).write(const DraftsCompanion(active: Value(false)));
   }
 
   @override
   Future<void> clearActiveDraftByIdentity(DraftType draftType, int? existingId, int? replyId) async {
-    try {
-      final List<String> draftTypeSqlValues = _compatibleDraftTypes(draftType).map((t) => _draftTypeConverter.toSql(t)).toList();
-      await (_database.update(_database.drafts)
-            ..where((t) => t.active.equals(true))
-            ..where((t) => t.draftType.isIn(draftTypeSqlValues))
-            ..where((t) => existingId == null ? t.existingId.isNull() : t.existingId.equals(existingId))
-            ..where((t) => replyId == null ? t.replyId.isNull() : t.replyId.equals(replyId)))
-          .write(const DraftsCompanion(active: Value(false)));
-    } catch (e) {
-      debugPrint(e.toString());
-    }
+    final List<String> draftTypeSqlValues = _compatibleDraftTypes(draftType).map((t) => _draftTypeConverter.toSql(t)).toList();
+    await (_database.update(_database.drafts)
+          ..where((t) => t.active.equals(true))
+          ..where((t) => t.draftType.isIn(draftTypeSqlValues))
+          ..where((t) => existingId == null ? t.existingId.isNull() : t.existingId.equals(existingId))
+          ..where((t) => replyId == null ? t.replyId.isNull() : t.replyId.equals(replyId)))
+        .write(const DraftsCompanion(active: Value(false)));
   }
 
   @override
   Future<void> setActiveDraftById(String id) async {
-    try {
-      final parsedId = int.tryParse(id);
-      if (parsedId == null) return;
+    final parsedId = int.tryParse(id);
+    if (parsedId == null) return;
 
-      await _database.transaction(() async {
-        await clearActiveDraft();
-        await (_database.update(_database.drafts)..where((t) => t.id.equals(parsedId))).write(const DraftsCompanion(active: Value(true)));
-      });
-    } catch (e) {
-      debugPrint(e.toString());
-    }
+    await _database.transaction(() async {
+      await clearActiveDraft();
+      await (_database.update(_database.drafts)..where((t) => t.id.equals(parsedId))).write(const DraftsCompanion(active: Value(true)));
+    });
   }
 
   @override
   Future<void> deleteDraft(DraftType draftType, int? existingId, int? replyId) async {
-    try {
-      final List<String> draftTypeSqlValues = _compatibleDraftTypes(draftType).map((t) => _draftTypeConverter.toSql(t)).toList();
-      await (_database.delete(_database.drafts)
-            ..where((t) => t.draftType.isIn(draftTypeSqlValues))
-            ..where((t) => existingId == null ? t.existingId.isNull() : t.existingId.equals(existingId))
-            ..where((t) => replyId == null ? t.replyId.isNull() : t.replyId.equals(replyId)))
-          .go();
-    } catch (e) {
-      debugPrint(e.toString());
-    }
+    final List<String> draftTypeSqlValues = _compatibleDraftTypes(draftType).map((t) => _draftTypeConverter.toSql(t)).toList();
+    await (_database.delete(_database.drafts)
+          ..where((t) => t.draftType.isIn(draftTypeSqlValues))
+          ..where((t) => existingId == null ? t.existingId.isNull() : t.existingId.equals(existingId))
+          ..where((t) => replyId == null ? t.replyId.isNull() : t.replyId.equals(replyId)))
+        .go();
   }
 
   Draft _toDraft(dynamic draft) {
@@ -251,11 +215,19 @@ class DraftRepositoryImpl implements DraftRepository {
   }
 
   Draft _normalizeDraftForStorage(Draft draft) {
-    return draft.copyWith(
+    return Draft(
+      id: draft.id,
+      draftType: draft.draftType,
+      existingId: draft.existingId,
+      replyId: draft.replyId,
+      active: draft.active,
+      accountId: draft.accountId,
       title: _normalizeNullableText(draft.title),
       url: _normalizeNullableText(draft.url),
       customThumbnail: _normalizeNullableText(draft.customThumbnail),
       altText: _normalizeNullableText(draft.altText),
+      nsfw: draft.nsfw,
+      languageId: draft.languageId,
       body: _normalizeNullableText(draft.body),
     );
   }

@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
 
-import 'package:thunder/src/features/account/account.dart';
 import 'package:thunder/src/foundation/primitives/primitives.dart';
 import 'package:thunder/src/foundation/persistence/persistence.dart';
 import 'package:thunder/src/features/feed/feed.dart';
@@ -10,7 +9,8 @@ import 'package:thunder/src/features/user/user.dart';
 /// Helper function which handles the logic of fetching items for the feed from the API
 /// This includes posts and user information (posts/comments)
 Future<FeedResult> fetchFeedItems({
-  required Account account,
+  required PostRepository postRepository,
+  required UserRepository userRepository,
   String? cursor,
   FeedListType? feedListType,
   PostSortType? postSortType,
@@ -37,10 +37,8 @@ Future<FeedResult> fetchFeedItems({
 
   // Guarantee that we fetch at least x posts (unless we reach the end of the feed)
   if (communityId != null || communityName != null || feedListType != null) {
-    final postRepository = PostRepositoryImpl(account: account);
-
     do {
-      Map<String, dynamic> response = await postRepository.getPosts(
+      final response = await postRepository.getPosts(
         cursor: currentCursor,
         postSortType: postSortType,
         feedListType: feedListType,
@@ -50,8 +48,8 @@ Future<FeedResult> fetchFeedItems({
         showSaved: showSaved,
       );
 
-      List<ThunderPost> responsePosts = response['posts'];
-      currentCursor = response['next_page'];
+      List<ThunderPost> responsePosts = response.posts;
+      currentCursor = response.nextPage;
 
       // Keep the length of the original response to see if there are any additional posts to fetch
       int postResponseLength = responsePosts.length;
@@ -68,9 +66,7 @@ Future<FeedResult> fetchFeedItems({
         return !keywordFilters.any((keyword) => title.contains(keyword.toLowerCase()) || body.contains(keyword.toLowerCase()) || url.contains(keyword.toLowerCase()));
       }).toList();
 
-      // Parse the posts and add in media information which is used elsewhere in the app
-      List<ThunderPost> formattedPosts = await parsePosts(responsePosts);
-      posts.addAll(formattedPosts);
+      posts.addAll(responsePosts);
 
       if (keywordFilters.isNotEmpty) {
         // Add some debugging logging so we can see what's going on when we're loading a feed with filters.
@@ -96,9 +92,7 @@ Future<FeedResult> fetchFeedItems({
     int currentPage = currentCursor != null ? int.tryParse(currentCursor) ?? 1 : 1;
 
     do {
-      final userRepository = UserRepositoryImpl(account: account);
-
-      Map<String, dynamic>? response = await userRepository.getUser(
+      final response = await userRepository.getUser(
         userId: userId,
         username: username,
         sort: postSortType,
@@ -108,22 +102,21 @@ Future<FeedResult> fetchFeedItems({
         includeContent: true,
       );
 
-      List<ThunderPost> responsePosts = response!['posts'];
-      List<ThunderComment> responseComments = response['comments'];
+      List<ThunderPost> responsePosts = response!.posts;
+      List<ThunderComment> responseComments = response.comments;
 
       // Remove deleted posts and comments
       responsePosts = responsePosts.where((post) => post.status.deleted == false).toList();
       responseComments = responseComments.where((comment) => comment.status.deleted == false).toList();
 
       // Parse the posts and add in media information which is used elsewhere in the app
-      List<ThunderPost> formattedPosts = await parsePosts(responsePosts);
-      posts.addAll(formattedPosts);
+      posts.addAll(responsePosts);
       comments.addAll(responseComments);
 
       if (responsePosts.isEmpty) hasReachedPostsEnd = true;
       if (responseComments.isEmpty) hasReachedCommentsEnd = true;
 
-      currentCursor = response['next_page'];
+      currentCursor = response.nextPage;
       currentPage = int.tryParse(currentCursor ?? '') ?? currentPage + 1;
 
       if (currentCursor == null) {

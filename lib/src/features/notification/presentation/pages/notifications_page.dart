@@ -10,7 +10,9 @@ import 'package:thunder/src/features/community/community.dart';
 import 'package:thunder/src/features/inbox/inbox.dart';
 import 'package:thunder/src/features/notification/notification.dart';
 import 'package:thunder/src/features/post/post.dart';
+import 'package:thunder/src/features/private_message/private_message.dart';
 import 'package:thunder/src/foundation/config/global_context.dart';
+import 'package:thunder/src/foundation/services/localization_service.dart';
 
 /// A page for displaying notifications (replies, mentions, or messages).
 class NotificationsPage extends StatelessWidget {
@@ -78,7 +80,8 @@ class NotificationsPage extends StatelessWidget {
                   account: account,
                   commentRepository: CommentRepositoryImpl(account: account),
                   notificationRepository: NotificationRepositoryImpl(account: account),
-                  localizationService: const GlobalContextLocalizationService(),
+                  privateMessageRepository: PrivateMessageRepositoryImpl(account: account),
+                  localizationService: const ThunderLocalizationService(),
                 )..add(
                   const GetInboxEvent(reset: true, inboxType: InboxType.messages),
                 ))
@@ -88,7 +91,8 @@ class NotificationsPage extends StatelessWidget {
                   showUnreadOnly: true,
                   commentRepository: CommentRepositoryImpl(account: account),
                   notificationRepository: NotificationRepositoryImpl(account: account),
-                  localizationService: const GlobalContextLocalizationService(),
+                  privateMessageRepository: PrivateMessageRepositoryImpl(account: account),
+                  localizationService: const ThunderLocalizationService(),
                 ),
         ),
         BlocProvider.value(
@@ -98,7 +102,7 @@ class NotificationsPage extends StatelessWidget {
             commentRepository: CommentRepositoryImpl(account: account),
             communityRepository: CommunityRepositoryImpl(account: account),
             preferencesStore: const UserPreferencesStore(),
-            localizationService: const GlobalContextLocalizationService(),
+            localizationService: const ThunderLocalizationService(),
           ),
         ),
       ],

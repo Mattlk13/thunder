@@ -12,7 +12,6 @@ import 'package:thunder/src/features/instance/instance.dart';
 import 'package:thunder/src/features/account/account.dart';
 import 'package:thunder/src/foundation/primitives/primitives.dart';
 import 'package:thunder/src/foundation/errors/errors.dart';
-import 'package:thunder/src/features/post/post.dart';
 import 'package:thunder/src/features/search/search.dart';
 import 'package:thunder/src/features/user/user.dart';
 import 'package:thunder/src/features/instance/domain/utils/instance_link_utils.dart';
@@ -53,8 +52,8 @@ class SearchBloc extends Bloc<SearchEvent, SearchState> {
   /// The comment repository to use for comment operations
   final CommentRepository commentRepository;
 
-  /// The search repository to use for search operations
-  final SearchRepository searchRepository;
+  /// The search service to use for search operations
+  final SearchService searchService;
 
   /// The community repository to use for community operations
   final CommunityRepository communityRepository;
@@ -68,7 +67,7 @@ class SearchBloc extends Bloc<SearchEvent, SearchState> {
   SearchBloc({
     required this.account,
     required this.commentRepository,
-    required this.searchRepository,
+    required this.searchService,
     required this.communityRepository,
     required this.userRepository,
     required this.instanceRepository,
@@ -134,33 +133,30 @@ class SearchBloc extends Bloc<SearchEvent, SearchState> {
       if (effectiveSearchType == MetaSearchType.instances) {
         // Retrieve all the federated instances from this instance.
         final federatedInstances = await instanceRepository.federated();
-        final federatedInstancesMap = federatedInstances['federated_instances'] as Map<String, dynamic>?;
-        final linkedInstances = federatedInstancesMap?['linked'] ?? [];
+        final linkedInstances = federatedInstances.linked;
 
-        final filteredInstances = linkedInstances.where((instance) => instance['software'] == "lemmy" && instance['domain'].contains(event.query)).toList();
+        final filteredInstances = linkedInstances.where((instance) => instance.software == 'lemmy' && instance.domain.contains(event.query)).toList();
 
         // Filter the instances down
         for (final instance in filteredInstances) {
-          if (instance.containsKey('federation_state') && instance['federation_state'].containsKey('last_successful_published_time')) {
-            final lastSuccessfulPublishedTime = DateTime.parse(instance['federation_state']['last_successful_published_time']);
+          final lastSuccessfulPublishedTime = instance.lastSuccessfulPublishedTime;
 
-            if (lastSuccessfulPublishedTime.isAfter(DateTime.now().subtract(const Duration(days: 1))) == true) {
-              instances.add(
-                ThunderInstanceInfo(
-                  id: instance['id'],
-                  domain: instance['domain'],
-                  name: fetchInstanceNameFromUrl(instance['domain'])!,
-                  version: instance['version'],
-                  success: true,
-                ),
-              );
-            }
+          if (lastSuccessfulPublishedTime != null && lastSuccessfulPublishedTime.isAfter(DateTime.now().subtract(const Duration(days: 1)))) {
+            instances.add(
+              ThunderInstanceInfo(
+                id: instance.id,
+                domain: instance.domain,
+                name: fetchInstanceNameFromUrl(instance.domain)!,
+                version: instance.version,
+                success: true,
+              ),
+            );
           }
         }
 
         emit(state.copyWith(status: SearchStatus.success, instances: instances, viewingAll: event.query.isEmpty));
       } else {
-        final response = await searchRepository.search(
+        final response = await searchService.search(
           query: event.query,
           type: effectiveSearchType,
           sort: state.searchSortType ?? SearchSortType.topYear,
@@ -199,7 +195,7 @@ class SearchBloc extends Bloc<SearchEvent, SearchState> {
         if (userName != null) {
           try {
             final response = await userRepository.getUser(username: userName);
-            users = [response!['user']];
+            users = [response!.user];
           } catch (e) {
             debugPrint('SearchBloc: Failed to fetch user by name: $e');
           }
@@ -211,7 +207,7 @@ class SearchBloc extends Bloc<SearchEvent, SearchState> {
         communities: prioritizeFavorites(communities, event.favoriteCommunities),
         users: users,
         comments: comments,
-        posts: await parsePosts(posts ?? []),
+        posts: posts ?? [],
         instances: instances,
         page: 2,
         viewingAll: event.query.isEmpty,
@@ -255,7 +251,7 @@ class SearchBloc extends Bloc<SearchEvent, SearchState> {
           if (effectiveSearchType == MetaSearchType.instances) {
             // Instance search is not paged, so this is a no-op.
           } else {
-            final response = await searchRepository.search(
+            final response = await searchService.search(
               query: event.query,
               type: effectiveSearchType,
               sort: state.searchSortType ?? SearchSortType.topYear,
@@ -289,7 +285,7 @@ class SearchBloc extends Bloc<SearchEvent, SearchState> {
           final List<ThunderCommunity> allCommunities = [...(state.communities ?? []), ...(communities ?? [])];
           final List<ThunderUser> allUsers = [...(state.users ?? []), ...(users ?? [])];
           final List<ThunderComment> allComments = [...(state.comments ?? []), ...(comments ?? [])];
-          final List<ThunderPost> allPosts = [...(state.posts ?? []), ...(await parsePosts(posts ?? []))];
+          final List<ThunderPost> allPosts = [...(state.posts ?? []), ...(posts ?? [])];
 
           return emit(state.copyWith(
             status: SearchStatus.success,

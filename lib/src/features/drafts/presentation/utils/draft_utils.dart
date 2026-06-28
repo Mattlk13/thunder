@@ -1,5 +1,5 @@
-import 'package:thunder/src/features/comment/data/repositories/comment_repository_impl.dart';
-import 'package:thunder/src/features/community/data/repositories/community_repository_impl.dart';
+import 'package:thunder/src/features/comment/data/repositories/comment_repository.dart';
+import 'package:thunder/src/features/community/data/repositories/community_repository.dart';
 import 'package:thunder/src/features/drafts/data/models/draft.dart';
 import 'package:thunder/src/features/drafts/data/repositories/draft_repository.dart';
 import 'package:thunder/src/features/post/data/repositories/post_repository.dart';
@@ -182,7 +182,7 @@ Future<DraftOpenResult> openDraftSession({
         }
 
         final response = await PostRepositoryImpl(account: account).getPost(draft.existingId!);
-        final post = response?['post'];
+        final post = response?.post;
 
         if (post is! ThunderPost) {
           return DraftOpenResult.abandoned;
@@ -198,7 +198,7 @@ Future<DraftOpenResult> openDraftSession({
         }
 
         final response = await PostRepositoryImpl(account: account).getPost(draft.replyId!);
-        final post = response?['post'];
+        final post = response?.post;
 
         if (post is! ThunderPost) {
           return DraftOpenResult.abandoned;
@@ -238,7 +238,7 @@ Future<DraftOpenResult> openDraftSession({
           await onCommentCreateFromCommentRestore(account, comment);
         } catch (_) {
           final response = await PostRepositoryImpl(account: account).getPost(draft.replyId!);
-          final post = response?['post'];
+          final post = response?.post;
 
           if (post is! ThunderPost) {
             return DraftOpenResult.abandoned;

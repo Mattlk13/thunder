@@ -5,7 +5,6 @@ import 'package:flutter/foundation.dart';
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
 
-import 'package:thunder/src/foundation/contracts/contracts.dart';
 import 'package:thunder/src/foundation/errors/errors.dart';
 import 'package:thunder/src/features/account/account.dart';
 import 'package:thunder/src/features/community/community.dart';
@@ -14,7 +13,8 @@ import 'package:thunder/src/features/post/data/repositories/post_repository.dart
 import 'package:thunder/src/features/search/search.dart';
 import 'package:thunder/src/foundation/networking/networking.dart';
 import 'package:thunder/src/foundation/primitives/primitives.dart';
-import 'package:thunder/src/shared/links/link_metadata_repository.dart';
+import 'package:thunder/src/foundation/services/localization_service.dart';
+import 'package:thunder/src/features/post/data/repositories/link_metadata_repository.dart';
 
 part 'create_post_state.dart';
 
@@ -357,19 +357,31 @@ class CreatePostCubit extends Cubit<CreatePostState> {
         errorReason: null,
       ));
 
-      final post = await repository.create(
-        communityId: state.communityId!,
-        name: state.title,
-        body: state.body,
-        url: state.url,
-        customThumbnail: state.customThumbnail,
-        altText: state.altText,
-        tags: _submissionTags(),
-        flairIds: _submissionFlairIds(),
-        nsfw: state.isNsfw,
-        postIdBeingEdited: _editingPost?.id,
-        languageId: state.languageId,
-      );
+      final post = _editingPost?.id == null
+          ? await repository.create(
+              communityId: state.communityId!,
+              name: state.title,
+              body: state.body,
+              url: state.url,
+              customThumbnail: state.customThumbnail,
+              altText: state.altText,
+              tags: _submissionTags(),
+              flairIds: _submissionFlairIds(),
+              nsfw: state.isNsfw,
+              languageId: state.languageId,
+            )
+          : await repository.edit(
+              postId: _editingPost!.id,
+              name: state.title,
+              body: state.body,
+              url: state.url,
+              customThumbnail: state.customThumbnail,
+              altText: state.altText,
+              tags: _submissionTags(),
+              flairIds: _submissionFlairIds(),
+              nsfw: state.isNsfw,
+              languageId: state.languageId,
+            );
 
       emit(state.copyWith(
         status: CreatePostStatus.success,
@@ -583,7 +595,7 @@ class CreatePostCubit extends Cubit<CreatePostState> {
     emit(state.copyWith(piefedMetadataStatus: CreatePostPiefedMetadataStatus.loading));
 
     try {
-      final CommunityDetails details = await _communityRepository(account).getCommunity(id: state.communityId);
+      final CommunityDetail details = await _communityRepository(account).getCommunity(id: state.communityId);
 
       if (requestId != _piefedMetadataRequestId || state.communityId != details.community.id) {
         return;

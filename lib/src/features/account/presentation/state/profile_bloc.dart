@@ -4,6 +4,7 @@ import 'package:bloc/bloc.dart';
 import 'package:bloc_concurrency/bloc_concurrency.dart';
 import 'package:equatable/equatable.dart';
 import 'package:stream_transform/stream_transform.dart';
+import 'package:thunder/src/foundation/services/localization_service.dart';
 
 import 'package:thunder/src/foundation/utils/utils.dart';
 import 'package:thunder/src/foundation/primitives/primitives.dart';
@@ -167,8 +168,8 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
       ));
 
       final response = await userRepository!.getUser(username: account.username, sort: PostSortType.new_, page: 1);
-      final ThunderUser user = response!['user'];
-      final List<ThunderCommunity> moderates = response['moderates'];
+      final ThunderUser user = response!.user;
+      final List<ThunderCommunity> moderates = response.moderates;
 
       // This eliminates an issue which has plagued me a lot which is that there's a race condition
       // with so many calls to GetAccountInformation, we can return success for the new and old account.

@@ -9,7 +9,8 @@ import 'package:thunder/src/foundation/errors/errors.dart';
 import 'package:thunder/src/features/comment/comment.dart';
 import 'package:thunder/src/features/inbox/inbox.dart';
 import 'package:thunder/src/features/notification/notification.dart';
-import 'package:thunder/src/features/private_message/domain/utils/private_message_thread_utils.dart';
+import 'package:thunder/src/features/private_message/private_message.dart';
+import 'package:thunder/src/foundation/services/localization_service.dart';
 
 part 'inbox_event.dart';
 part 'inbox_state.dart';
@@ -26,6 +27,7 @@ class InboxBloc extends Bloc<InboxEvent, InboxState> {
 
   final CommentRepository commentRepository;
   final NotificationRepository notificationRepository;
+  final PrivateMessageRepository privateMessageRepository;
   final LocalizationService _localizationService;
 
   /// Constructor allowing an initial set of replies to be set in the state.
@@ -35,6 +37,7 @@ class InboxBloc extends Bloc<InboxEvent, InboxState> {
     required this.account,
     required this.commentRepository,
     required this.notificationRepository,
+    required this.privateMessageRepository,
     required LocalizationService localizationService,
   })  : _localizationService = localizationService,
         super(InboxState(replies: replies, showUnreadOnly: showUnreadOnly)) {
@@ -46,6 +49,7 @@ class InboxBloc extends Bloc<InboxEvent, InboxState> {
     required this.account,
     required this.commentRepository,
     required this.notificationRepository,
+    required this.privateMessageRepository,
     required LocalizationService localizationService,
   })  : _localizationService = localizationService,
         super(const InboxState()) {
@@ -144,7 +148,7 @@ class InboxBloc extends Bloc<InboxEvent, InboxState> {
             );
             break;
           case InboxType.messages:
-            privateMessagesResponse = await notificationRepository.messages(
+            privateMessagesResponse = await privateMessageRepository.messages(
               unread: false,
               limit: limit,
               page: 1,
@@ -165,7 +169,7 @@ class InboxBloc extends Bloc<InboxEvent, InboxState> {
               page: 1,
             );
 
-            privateMessagesResponse = await notificationRepository.messages(
+            privateMessagesResponse = await privateMessageRepository.messages(
               unread: false,
               limit: limit,
               page: 1,
@@ -230,7 +234,7 @@ class InboxBloc extends Bloc<InboxEvent, InboxState> {
           break;
         case InboxType.messages:
           if (state.hasReachedInboxPrivateMessageEnd) return;
-          privateMessagesResponse = await notificationRepository.messages(
+          privateMessagesResponse = await privateMessageRepository.messages(
             unread: false,
             limit: limit,
             page: state.inboxPrivateMessagePage,
@@ -392,7 +396,7 @@ class InboxBloc extends Bloc<InboxEvent, InboxState> {
               read: value,
             );
           } else if (existingPrivateMessageView != null) {
-            await notificationRepository.markMessageAsRead(
+            await privateMessageRepository.markAsRead(
               notificationId: event.privateMessageId!,
               read: value,
             );

@@ -165,7 +165,7 @@ void handleLink(BuildContext context, {required String url, bool forceOpenInBrow
       final post = await PostRepositoryImpl(account: account).getPost(postId);
 
       if (context.mounted) {
-        navigateToPost(context, post: post?['post']);
+        navigateToPost(context, post: post?.post);
         return;
       }
     } catch (e) {
@@ -344,9 +344,3 @@ List<({String sourceName, MessageFormat template})> _alternateSources = [
   (sourceName: 'Internet Archive', template: MessageFormat('https://web.archive.org/save/{link}')),
   (sourceName: 'Ground News', template: MessageFormat('https://ground.news/find?url={link}')),
 ];
-
-/// Determines if a given URL is valid. The URL must have the 'http' or 'https' scheme.
-bool isValidUrl(String url) {
-  final uri = Uri.tryParse(url);
-  return uri != null && uri.hasAbsolutePath && uri.scheme.startsWith('http');
-}

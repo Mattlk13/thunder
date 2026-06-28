@@ -1,25 +1,10 @@
-import 'dart:async';
-
 import 'package:flutter/foundation.dart';
 
-import 'package:thunder/src/foundation/contracts/account.dart';
-import 'package:thunder/src/foundation/networking/networking.dart';
-import 'package:thunder/src/features/modlog/modlog.dart';
+import 'package:thunder/src/foundation/foundation.dart';
+import 'package:thunder/src/features/modlog/domain/models/modlog_feed.dart';
+import 'package:thunder/src/features/modlog/data/models/modlog_event_item.dart';
 
-/// Model representing a page of modlog events
-class ModlogFeed {
-  final List<ModlogEventItem> items;
-  final bool hasReachedEnd;
-  final int currentPage;
-
-  ModlogFeed({
-    required this.items,
-    required this.hasReachedEnd,
-    required this.currentPage,
-  });
-}
-
-/// Interface for a modlog repository
+/// Repository contract for modlog event reads.
 abstract class ModlogRepository {
   Future<ModlogFeed> getModlogEvents({
     int limit = 20,
@@ -32,7 +17,7 @@ abstract class ModlogRepository {
   });
 }
 
-/// Implementation of [ModlogRepository]
+/// Implementation of [ModlogRepository] using the unified API client
 class ModlogRepositoryImpl implements ModlogRepository {
   /// The account to use for methods invoked in this repository
   final Account account;
@@ -40,10 +25,19 @@ class ModlogRepositoryImpl implements ModlogRepository {
   /// The API client to use for the repository
   final ThunderApiClient _api;
 
+  /// Kept for a consistent repository constructor surface across API-backed repos.
+  // ignore: unused_field
+  final LocalizationService _localization;
+
   /// Creates a new ModlogRepositoryImpl.
   ///
-  /// An optional [api] client can be provided for testing.
-  ModlogRepositoryImpl({required this.account, ThunderApiClient? api}) : _api = api ?? ApiClientFactory.create(account, debug: kDebugMode);
+  /// An optional [api] client and [localization] can be provided for testing.
+  ModlogRepositoryImpl({
+    required this.account,
+    ThunderApiClient? api,
+    LocalizationService localization = const ThunderLocalizationService(),
+  })  : _api = api ?? ApiClientFactory.create(account, debug: kDebugMode),
+        _localization = localization;
 
   @override
   Future<ModlogFeed> getModlogEvents({
@@ -55,32 +49,23 @@ class ModlogRepositoryImpl implements ModlogRepository {
     int? moderatorId,
     int? commentId,
   }) async {
-    bool hasReachedEnd = false;
-    List<ModlogEventItem> modLogEventItems = [];
-    int currentPage = page;
+    final items = await _api.getModlog(
+      page: page,
+      limit: limit,
+      modlogActionType: modlogActionType,
+      communityId: communityId,
+      userId: userId,
+      moderatorId: moderatorId,
+      commentId: commentId,
+    );
 
-    // Guarantee that we fetch at least x events (unless we reach the end of the feed)
-    do {
-      final items = await _api.getModlog(
-        page: currentPage,
-        limit: limit,
-        modlogActionType: modlogActionType,
-        communityId: communityId,
-        userId: userId,
-        moderatorId: moderatorId,
-        commentId: commentId,
-      );
-
-      modLogEventItems.addAll(items.map((event) => ModlogEventItem.fromModlogEvent(event)));
-
-      if (items.isEmpty) hasReachedEnd = true;
-      currentPage++;
-    } while (!hasReachedEnd && modLogEventItems.length < limit);
+    final modLogEventItems = items.map((event) => ModlogEventItem.fromModlogEvent(event)).toList();
+    final hasReachedEnd = items.isEmpty || items.length < limit;
 
     return ModlogFeed(
       items: modLogEventItems,
       hasReachedEnd: hasReachedEnd,
-      currentPage: currentPage,
+      currentPage: page + 1,
     );
   }
 }

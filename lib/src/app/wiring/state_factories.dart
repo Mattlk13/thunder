@@ -27,7 +27,20 @@ import 'package:thunder/src/features/search/api.dart';
 import 'package:thunder/src/features/session/api.dart';
 import 'package:thunder/src/features/user/api.dart';
 import 'package:thunder/src/features/instance/presentation/state/instance_page_bloc.dart';
-import 'package:thunder/src/shared/links/link_metadata_repository.dart';
+import 'package:thunder/src/foundation/services/localization_service.dart';
+
+AccountRepository createAccountRepository(Account account) => AccountRepositoryImpl(account: account);
+CommentRepository createCommentRepository(Account account) => CommentRepositoryImpl(account: account);
+CommunityRepository createCommunityRepository(Account account) => CommunityRepositoryImpl(account: account);
+InstanceRepository createInstanceRepository(Account account) => InstanceRepositoryImpl(account: account);
+LinkMetadataRepository createLinkMetadataRepository(Account account) => LinkMetadataRepositoryImpl(account: account);
+NotificationRepository createNotificationRepository(Account account) => NotificationRepositoryImpl(account: account);
+PostRepository createPostRepository(Account account) => PostRepositoryImpl(account: account);
+PrivateMessageRepository createPrivateMessageRepository(Account account) => PrivateMessageRepositoryImpl(account: account);
+ReportRepository createReportRepository(Account account) => ReportRepositoryImpl(account: account);
+SearchRepository createSearchRepository(Account account) => SearchRepositoryImpl(account: account);
+SearchService createSearchService(Account account) => SearchService(searchRepository: createSearchRepository(account));
+UserRepository createUserRepository(Account account) => UserRepositoryImpl(account: account);
 
 AppBootstrapCubit createAppBootstrapCubit() {
   return AppBootstrapCubit(
@@ -44,7 +57,7 @@ ThunderCubit createThunderCubit() {
 DeepLinksCubit createDeepLinksCubit() {
   return DeepLinksCubit(
     deepLinkService: AppLinksDeepLinkService(),
-    localizationService: const GlobalContextLocalizationService(),
+    localizationService: const ThunderLocalizationService(),
   );
 }
 
@@ -57,11 +70,11 @@ NetworkCheckerCubit createNetworkCheckerCubit() {
 ProfileBloc createProfileBloc(Account account) {
   return ProfileBloc(
     account: account,
-    instanceRepositoryFactory: (account) => InstanceRepositoryImpl(account: account),
-    accountRepositoryFactory: (account) => AccountRepositoryImpl(account: account),
-    userRepositoryFactory: (account) => UserRepositoryImpl(account: account),
+    instanceRepositoryFactory: createInstanceRepository,
+    accountRepositoryFactory: createAccountRepository,
+    userRepositoryFactory: createUserRepository,
     platformDetectionService: const NodeInfoPlatformDetectionService(),
-    localizationService: const GlobalContextLocalizationService(),
+    localizationService: const ThunderLocalizationService(),
   );
 }
 
@@ -71,7 +84,7 @@ InstanceValidationCubit createInstanceValidationCubit() {
 
 ProfileModalCubit createProfileModalCubit({required bool quickSelectMode}) {
   return ProfileModalCubit(
-    sessionRepository: const PersistentSessionRepository(),
+    sessionRepository: SessionRepositoryImpl(),
     quickSelectMode: quickSelectMode,
     instanceInfoLookup: (instance) => getInstanceInfo(instance).timeout(
       const Duration(seconds: 5),
@@ -86,7 +99,7 @@ ProfileModalCubit createProfileModalCubit({required bool quickSelectMode}) {
       return pingData.response?.time;
     },
     unreadCountLookup: (account) async {
-      final unread = await NotificationRepositoryImpl(account: account).unreadNotificationsCount();
+      final unread = await createNotificationRepository(account).unreadNotificationsCount();
       return unread.total == 0 ? null : unread.total;
     },
   );
@@ -94,19 +107,19 @@ ProfileModalCubit createProfileModalCubit({required bool quickSelectMode}) {
 
 SessionBloc createSessionBloc() {
   return SessionBloc(
-    sessionRepository: const PersistentSessionRepository(),
-    accountRepositoryFactory: (account) => AccountRepositoryImpl(account: account),
-    instanceRepositoryFactory: (account) => InstanceRepositoryImpl(account: account),
-    localizationService: const GlobalContextLocalizationService(),
+    sessionRepository: SessionRepositoryImpl(),
+    accountRepositoryFactory: createAccountRepository,
+    instanceRepositoryFactory: createInstanceRepository,
+    localizationService: const ThunderLocalizationService(),
   );
 }
 
 FeedBloc createFeedBloc(Account account) {
   return FeedBloc(
     account: account,
-    postRepository: PostRepositoryImpl(account: account),
-    communityRepository: CommunityRepositoryImpl(account: account),
-    userRepository: UserRepositoryImpl(account: account),
+    postRepository: createPostRepository(account),
+    communityRepository: createCommunityRepository(account),
+    userRepository: createUserRepository(account),
   );
 }
 
@@ -125,28 +138,29 @@ InstancePageBloc createInstancePageBloc({
   return InstancePageBloc(
     account: account,
     instanceInfo: instanceInfo,
-    repository: SearchRepositoryImpl(account: remoteAccount),
-    localRepository: SearchRepositoryImpl(account: account),
+    repository: createSearchRepository(remoteAccount),
+    localRepository: createSearchRepository(account),
   );
 }
 
 SearchBloc createSearchBloc(Account account) {
   return SearchBloc(
     account: account,
-    commentRepository: CommentRepositoryImpl(account: account),
-    searchRepository: SearchRepositoryImpl(account: account),
-    communityRepository: CommunityRepositoryImpl(account: account),
-    userRepository: UserRepositoryImpl(account: account),
-    instanceRepository: InstanceRepositoryImpl(account: account),
+    commentRepository: createCommentRepository(account),
+    searchService: createSearchService(account),
+    communityRepository: createCommunityRepository(account),
+    userRepository: createUserRepository(account),
+    instanceRepository: createInstanceRepository(account),
   );
 }
 
 InboxBloc createInboxBloc(Account account) {
   return InboxBloc(
     account: account,
-    commentRepository: CommentRepositoryImpl(account: account),
-    notificationRepository: NotificationRepositoryImpl(account: account),
-    localizationService: const GlobalContextLocalizationService(),
+    commentRepository: createCommentRepository(account),
+    notificationRepository: createNotificationRepository(account),
+    privateMessageRepository: createPrivateMessageRepository(account),
+    localizationService: const ThunderLocalizationService(),
   );
 }
 
@@ -159,51 +173,52 @@ InboxBloc createInboxBlocWithInitial({
     account: account,
     replies: replies,
     showUnreadOnly: showUnreadOnly,
-    commentRepository: CommentRepositoryImpl(account: account),
-    notificationRepository: NotificationRepositoryImpl(account: account),
-    localizationService: const GlobalContextLocalizationService(),
+    commentRepository: createCommentRepository(account),
+    notificationRepository: createNotificationRepository(account),
+    privateMessageRepository: createPrivateMessageRepository(account),
+    localizationService: const ThunderLocalizationService(),
   );
 }
 
 PostBloc createPostBloc(Account account) {
   return PostBloc(
     account: account,
-    postRepository: PostRepositoryImpl(account: account),
-    commentRepository: CommentRepositoryImpl(account: account),
-    communityRepository: CommunityRepositoryImpl(account: account),
+    postRepository: createPostRepository(account),
+    commentRepository: createCommentRepository(account),
+    communityRepository: createCommunityRepository(account),
     preferencesStore: const UserPreferencesStore(),
-    localizationService: const GlobalContextLocalizationService(),
+    localizationService: const ThunderLocalizationService(),
   );
 }
 
 CreatePostCubit createCreatePostCubit(Account account) {
   return CreatePostCubit(
     account: account,
-    postRepository: (account) => PostRepositoryImpl(account: account),
-    accountRepository: (account) => AccountRepositoryImpl(account: account),
-    communityRepository: (account) => CommunityRepositoryImpl(account: account),
-    searchRepository: (account) => SearchRepositoryImpl(account: account),
-    linkMetadataRepository: (account) => LinkMetadataRepositoryImpl(account: account),
+    postRepository: createPostRepository,
+    accountRepository: createAccountRepository,
+    communityRepository: createCommunityRepository,
+    searchRepository: createSearchRepository,
+    linkMetadataRepository: createLinkMetadataRepository,
     draftRepository: DraftRepositoryImpl(database: database),
-    localizationService: const GlobalContextLocalizationService(),
+    localizationService: const ThunderLocalizationService(),
   );
 }
 
 CreateCommentCubit createCreateCommentCubit(Account account) {
   return CreateCommentCubit(
     account: account,
-    commentRepositoryFactory: (account) => CommentRepositoryImpl(account: account),
-    accountRepositoryFactory: (account) => AccountRepositoryImpl(account: account),
-    localizationService: const GlobalContextLocalizationService(),
+    commentRepositoryFactory: createCommentRepository,
+    accountRepositoryFactory: createAccountRepository,
+    localizationService: const ThunderLocalizationService(),
   );
 }
 
 CreatePrivateMessageCubit createCreatePrivateMessageCubit(Account account) {
   return CreatePrivateMessageCubit(
     account: account,
-    privateMessageRepository: (account) => PrivateMessageRepositoryImpl(account: account),
-    searchRepository: (account) => SearchRepositoryImpl(account: account),
-    localizationService: const GlobalContextLocalizationService(),
+    privateMessageRepository: createPrivateMessageRepository,
+    searchRepository: createSearchRepository,
+    localizationService: const ThunderLocalizationService(),
   );
 }
 
@@ -216,7 +231,7 @@ PrivateMessageThreadCubit createPrivateMessageThreadCubit(
   return PrivateMessageThreadCubit(
     account: account,
     participant: participant,
-    repository: PrivateMessageRepositoryImpl(account: account),
+    repository: createPrivateMessageRepository(account),
     initialMessages: initialMessages,
     conversationId: conversationId,
   );
@@ -225,8 +240,8 @@ PrivateMessageThreadCubit createPrivateMessageThreadCubit(
 AccountSettingsCubit createAccountSettingsCubit(Account account, {ThunderSiteResponse? initialSiteResponse}) {
   return AccountSettingsCubit(
     account: account,
-    accountRepository: AccountRepositoryImpl(account: account),
-    localizationService: const GlobalContextLocalizationService(),
+    accountRepository: createAccountRepository(account),
+    localizationService: const ThunderLocalizationService(),
     initialSiteResponse: initialSiteResponse,
   );
 }
@@ -234,25 +249,26 @@ AccountSettingsCubit createAccountSettingsCubit(Account account, {ThunderSiteRes
 UserBlocksCubit createUserBlocksCubit(Account account) {
   return UserBlocksCubit(
     account: account,
-    instanceRepository: InstanceRepositoryImpl(account: account),
-    communityRepository: CommunityRepositoryImpl(account: account),
-    userRepository: UserRepositoryImpl(account: account),
-    localizationService: const GlobalContextLocalizationService(),
+    instanceRepository: createInstanceRepository(account),
+    communityRepository: createCommunityRepository(account),
+    userRepository: createUserRepository(account),
+    localizationService: const ThunderLocalizationService(),
   );
 }
 
 UserMediaCubit createUserMediaCubit(Account account) {
   return UserMediaCubit(
     account: account,
-    accountRepository: AccountRepositoryImpl(account: account),
-    searchRepository: SearchRepositoryImpl(account: account),
-    localizationService: const GlobalContextLocalizationService(),
+    accountRepository: createAccountRepository(account),
+    searchRepository: createSearchRepository(account),
+    localizationService: const ThunderLocalizationService(),
   );
 }
 
 ReportBloc createReportBloc(Account account) {
   return ReportBloc(
     account: account,
-    localizationService: const GlobalContextLocalizationService(),
+    reportRepository: createReportRepository(account),
+    localizationService: const ThunderLocalizationService(),
   );
 }
