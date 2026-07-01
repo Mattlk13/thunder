@@ -30,11 +30,11 @@
     "@accountSettingsImportedSuccessfully": {
         "description": "Hesap ayarları başarıyla içe aktarıldığında kullanıcıya gösterilen mesaj"
     },
-    "accountSwitchParentCommentNotFound": "Seçilen yorum '{instance}' üzerinde bulunamadı.",
+    "accountSwitchParentCommentNotFound": "Seçilen yorum '{instance}' üzerinde bulunamadı",
     "@accountSwitchParentCommentNotFound": {
         "description": "Yanıtlanacak yorum çözümlenemediğinde gösterilen hata mesajı"
     },
-    "accountSwitchPostNotFound": "Seçilen gönderi '{instance}' üzerinde bulunamadı.",
+    "accountSwitchPostNotFound": "Seçilen gönderi '{instance}' üzerinde bulunamadı",
     "@accountSwitchPostNotFound": {
         "description": "Yanıtlanacak gönderi çözümlenemediğinde gösterilen hata mesajı"
     },
@@ -2953,5 +2953,61 @@
     "unpinnedPostFromCommunity": "Topluluktaki sabitlenmiş gönderinin sabitlemesi kaldırıldı",
     "@unpinnedPostFromCommunity": {
         "description": "Message shown when a post is unpinned from a community"
+    },
+    "postFlairs": "Rozet",
+    "@postFlairs": {
+        "description": "Label for post flair selection"
+    },
+    "postFlairsUnavailable": "Bu topluluk için bir rozet seçeneği yok",
+    "@postFlairsUnavailable": {
+        "description": "Helper text when no post flairs are available"
+    },
+    "postTags": "Etiketler",
+    "@postTags": {
+        "description": "Label for post tags"
+    },
+    "postTagsHelperText": "Etiketleri virgül ile ayır",
+    "@postTagsHelperText": {
+        "description": "Helper text for comma-separated post tags"
+    },
+    "deleteDraftConfirmation": "Bu taslağı silmek istediğinize emin misiniz?",
+    "@deleteDraftConfirmation": {
+        "description": "Confirmation message for deleting a draft"
+    },
+    "drafts": "Taslaklar",
+    "@drafts": {
+        "description": "Heading for drafts settings"
+    },
+    "noCommunitySelected": "Bir topluluk seçilmedi",
+    "@noCommunitySelected": {
+        "description": "Fallback subtitle when a draft has no selected community"
+    },
+    "noDrafts": "Henüz bir taslağınız yok",
+    "@noDrafts": {
+        "description": "Placeholder message for empty draft list"
+    },
+    "replyToComment": "Yoruma Yanıt Ver",
+    "@replyToComment": {
+        "description": "Label used for comment drafts replying to another comment"
+    },
+    "untitledCommentDraft": "İsimsiz yorum taslağı",
+    "@untitledCommentDraft": {
+        "description": "Fallback title for comment drafts without body text"
+    },
+    "untitledPostDraft": "İsimsiz gönderi taslağı",
+    "@untitledPostDraft": {
+        "description": "Fallback title for post drafts without a title"
+    },
+    "directMessage": "Doğrudan mesaj",
+    "@directMessage": {
+        "description": "Title for the private message compose page"
+    },
+    "selectRecipient": "Alıcıyı seçin",
+    "@selectRecipient": {
+        "description": "Prompt to choose a private message recipient"
+    },
+    "send": "İlet",
+    "@send": {
+        "description": "Action to send content"
     }
 }

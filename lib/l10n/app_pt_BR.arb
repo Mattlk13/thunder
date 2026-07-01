@@ -3513,5 +3513,71 @@
     "showPostCommunityFirst": "Mostrar comunidade e autor primeiro",
     "@showPostCommunityFirst": {
         "description": "Toggle to show community and author first."
-    }
+    },
+    "postTags": "Etiquetas",
+    "@postTags": {
+        "description": "Label for post tags"
+    },
+    "postTagsHelperText": "Separe as etiquetas com vírgulas",
+    "@postTagsHelperText": {
+        "description": "Helper text for comma-separated post tags"
+    },
+    "postFlairs": "Enfeites",
+    "@postFlairs": {
+        "description": "Label for post flair selection"
+    },
+    "postFlairsUnavailable": "Nenhuma opção de enfeite disponível nesta comunidade",
+    "@postFlairsUnavailable": {
+        "description": "Helper text when no post flairs are available"
+    },
+    "deleteDraftConfirmation": "Tem certeza de que deseja excluir este rascunho?",
+    "@deleteDraftConfirmation": {
+        "description": "Confirmation message for deleting a draft"
+    },
+    "drafts": "Rascunhos",
+    "@drafts": {
+        "description": "Heading for drafts settings"
+    },
+    "noCommunitySelected": "Nenhuma comunidade selecionada",
+    "@noCommunitySelected": {
+        "description": "Fallback subtitle when a draft has no selected community"
+    },
+    "noDrafts": "Você ainda não tem nenhum rascunho",
+    "@noDrafts": {
+        "description": "Placeholder message for empty draft list"
+    },
+    "replyToComment": "Responder ao comentário",
+    "@replyToComment": {
+        "description": "Label used for comment drafts replying to another comment"
+    },
+    "untitledCommentDraft": "Rascunho de comentário sem título",
+    "@untitledCommentDraft": {
+        "description": "Fallback title for comment drafts without body text"
+    },
+    "untitledPostDraft": "Rascunho de postagem sem título",
+    "@untitledPostDraft": {
+        "description": "Fallback title for post drafts without a title"
+    },
+    "directMessage": "Mensagem direta",
+    "@directMessage": {
+        "description": "Title for the private message compose page"
+    },
+    "selectRecipient": "Selecionar destinatário",
+    "@selectRecipient": {
+        "description": "Prompt to choose a private message recipient"
+    },
+    "send": "Enviar",
+    "@send": {
+        "description": "Action to send content"
+    },
+    "failedToCreateDefaultProfile": "Falha ao criar o perfil padrão",
+    "@failedToCreateDefaultProfile": {
+        "description": "Error when session bootstrap cannot create the default anonymous profile"
+    },
+    "instanceOffline": "A instância está off-line",
+    "instanceOnline": "A instância está on-line",
+    "instanceStatusUnknown": "Status da instância desconhecido",
+    "notAvailable": "N/A",
+    "piefedSupportBeta": "O suporte ao PieFed está atualmente em fase beta.\nAinda nem todos os recursos são suportados.",
+    "profileOperationInProgress": "Operação de perfil em andamento"
 }
