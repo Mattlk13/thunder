@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
@@ -14,7 +15,8 @@ enum HttpMethod { get, post, put, delete }
 /// Base class containing shared HTTP infrastructure for all API clients.
 /// Handles requests, responses, and errors for all API clients.
 ///
-/// Subclasses must implement [basePath], [platformName], and [uploadImage].
+/// Subclasses must implement [basePath] and [platformName].
+/// [ThunderApiClient] endpoint methods, including [ThunderApiClient.uploadImage], live in concrete clients.
 abstract class BaseApiClient {
   /// The account to use for API calls (contains instance URL and JWT).
   final Account account;
@@ -149,6 +151,16 @@ abstract class BaseApiClient {
       }
 
       return await handleResponse(uri, response) as Map<String, dynamic>;
+    } on SocketException {
+      throw NetworkException(
+        'network_error',
+        platformName: platformName,
+      );
+    } on http.ClientException {
+      throw NetworkException(
+        'network_error',
+        platformName: platformName,
+      );
     } catch (e) {
       if (debug) debugPrint('$platformName API: Error: $e');
       rethrow;

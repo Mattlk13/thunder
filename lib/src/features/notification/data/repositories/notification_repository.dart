@@ -1,6 +1,5 @@
-import 'package:flutter/foundation.dart';
-
 import 'package:thunder/src/foundation/foundation.dart';
+import 'package:thunder/src/foundation/networking/resolved_api_client.dart';
 import 'package:thunder/src/features/notification/domain/models/unread_notifications_count.dart';
 
 /// Repository contract for notification inbox reads and read state.
@@ -46,7 +45,7 @@ class NotificationRepositoryImpl implements NotificationRepository {
   final Account account;
 
   /// The API client to use for the repository
-  final ThunderApiClient _api;
+  final ResolvedApiClient _api;
 
   /// The localization service to use for user-facing errors
   final LocalizationService _localization;
@@ -58,7 +57,7 @@ class NotificationRepositoryImpl implements NotificationRepository {
     required this.account,
     ThunderApiClient? api,
     LocalizationService localization = const ThunderLocalizationService(),
-  })  : _api = api ?? ApiClientFactory.create(account, debug: kDebugMode),
+  })  : _api = ResolvedApiClient(account: account, api: api),
         _localization = localization;
 
   @override
@@ -71,7 +70,8 @@ class NotificationRepositoryImpl implements NotificationRepository {
     final l10n = _localization.l10n;
     if (account.anonymous) throw NotLoggedInException(l10n.userNotLoggedIn);
 
-    return _api.getCommentReplies(page: page, limit: limit, sort: sort, unread: unread);
+    final api = await _api.get();
+    return api.getCommentReplies(page: page, limit: limit, sort: sort, unread: unread);
   }
 
   @override
@@ -79,7 +79,8 @@ class NotificationRepositoryImpl implements NotificationRepository {
     final l10n = _localization.l10n;
     if (account.anonymous) throw NotLoggedInException(l10n.userNotLoggedIn);
 
-    await _api.markCommentReplyAsRead(replyId: replyId, read: read);
+    final api = await _api.get();
+    await api.markCommentReplyAsRead(replyId: replyId, read: read);
   }
 
   @override
@@ -92,7 +93,8 @@ class NotificationRepositoryImpl implements NotificationRepository {
     final l10n = _localization.l10n;
     if (account.anonymous) throw NotLoggedInException(l10n.userNotLoggedIn);
 
-    return _api.getCommentMentions(page: page, limit: limit, sort: sort, unread: unread);
+    final api = await _api.get();
+    return api.getCommentMentions(page: page, limit: limit, sort: sort, unread: unread);
   }
 
   @override
@@ -100,7 +102,8 @@ class NotificationRepositoryImpl implements NotificationRepository {
     final l10n = _localization.l10n;
     if (account.anonymous) throw NotLoggedInException(l10n.userNotLoggedIn);
 
-    await _api.markCommentMentionAsRead(mentionId: mentionId, read: read);
+    final api = await _api.get();
+    await api.markCommentMentionAsRead(mentionId: mentionId, read: read);
   }
 
   @override
@@ -108,7 +111,8 @@ class NotificationRepositoryImpl implements NotificationRepository {
     final l10n = _localization.l10n;
     if (account.anonymous) throw NotLoggedInException(l10n.userNotLoggedIn);
 
-    final response = await _api.unreadCount();
+    final api = await _api.get();
+    final response = await api.unreadCount();
     return UnreadNotificationsCount(
       replies: response.replies,
       mentions: response.mentions,
@@ -121,6 +125,7 @@ class NotificationRepositoryImpl implements NotificationRepository {
     final l10n = _localization.l10n;
     if (account.anonymous) throw NotLoggedInException(l10n.userNotLoggedIn);
 
-    await _api.markAllNotificationsAsRead();
+    final api = await _api.get();
+    await api.markAllNotificationsAsRead();
   }
 }

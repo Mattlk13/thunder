@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:thunder/src/features/account/account.dart';
-import 'package:thunder/src/foundation/primitives/primitives.dart';
 import 'package:thunder/src/features/post/post.dart';
 import 'package:thunder/src/features/settings/api.dart';
 import 'package:thunder/src/foundation/config/global_context.dart';
@@ -261,11 +260,6 @@ class _GeneralPostActionBottomSheetPageState extends State<GeneralPostActionBott
 
     if (widget.account.anonymous) {
       quickActions = quickActions.where((action) => action.requiresAuthentication == false).toList();
-    } else {
-      // Hide hide action if account is not Lemmy platform
-      if (widget.account.platform != ThreadiversePlatform.lemmy) {
-        quickActions = quickActions.where((action) => action != GeneralQuickPostAction.hide).toList();
-      }
     }
 
     // Determine the available sub-menus to display

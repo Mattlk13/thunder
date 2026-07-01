@@ -20,8 +20,8 @@ void main() {
   });
 
   group('ReportRepositoryImpl', () {
-    test('getReports throws UnsupportedFeatureException when post reports unsupported', () async {
-      when(() => api.supportsPostReports).thenReturn(false);
+    test('getReports throws UnsupportedFeatureException when report listing unsupported', () async {
+      when(() => api.supportsListReports).thenReturn(false);
 
       final repository = ReportRepositoryImpl(
         account: loggedInAccount(),
@@ -58,6 +58,31 @@ void main() {
 
       expect(result, page);
       verify(() => api.getReports(kind: ReportKind.post, page: 1, cursor: null, limit: 10, unresolved: false, communityId: null, postId: null, commentId: null)).called(1);
+    });
+
+    test('getReports maps comment feed type to comment kind and delegates', () async {
+      const page = ThunderPage<ThunderReport>(items: []);
+      when(() => api.getReports(
+            kind: ReportKind.comment,
+            postId: any(named: 'postId'),
+            commentId: any(named: 'commentId'),
+            page: any(named: 'page'),
+            cursor: any(named: 'cursor'),
+            limit: any(named: 'limit'),
+            unresolved: any(named: 'unresolved'),
+            communityId: any(named: 'communityId'),
+          )).thenAnswer((_) async => page);
+
+      final repository = ReportRepositoryImpl(
+        account: loggedInAccount(),
+        api: api,
+        localization: testLocalization,
+      );
+
+      final result = await repository.getReports(reportFeedType: ReportFeedType.comment);
+
+      expect(result, page);
+      verify(() => api.getReports(kind: ReportKind.comment, page: 1, cursor: null, limit: 10, unresolved: false, communityId: null, postId: null, commentId: null)).called(1);
     });
 
     test('resolveReport returns true when api resolved matches requested value', () async {

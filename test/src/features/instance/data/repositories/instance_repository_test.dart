@@ -48,8 +48,8 @@ void main() {
       );
     });
 
-    test('block throws UnsupportedFeatureException when instance block unsupported', () async {
-      when(() => api.supportsInstanceBlock).thenReturn(false);
+    test('block delegates to api without feature flag guard', () async {
+      when(() => api.blockInstance(instanceId: 9, block: true)).thenAnswer((_) async => true);
 
       final repository = InstanceRepositoryImpl(
         account: loggedInAccount(),
@@ -57,10 +57,10 @@ void main() {
         localization: testLocalization,
       );
 
-      expect(
-        () => repository.block(1, true),
-        throwsA(isA<UnsupportedFeatureException>()),
-      );
+      final blocked = await repository.block(9, true);
+
+      expect(blocked, isTrue);
+      verify(() => api.blockInstance(instanceId: 9, block: true)).called(1);
     });
 
     test('federated parses json into FederatedInstances linked list', () async {

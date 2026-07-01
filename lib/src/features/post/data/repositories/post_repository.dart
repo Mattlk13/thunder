@@ -1,6 +1,5 @@
-import 'package:flutter/foundation.dart';
-
 import 'package:thunder/src/foundation/foundation.dart';
+import 'package:thunder/src/foundation/networking/resolved_api_client.dart';
 import 'package:thunder/src/features/post/post.dart';
 
 /// Repository contract for post reads and mutations.
@@ -91,7 +90,7 @@ class PostRepositoryImpl implements PostRepository {
   final Account account;
 
   /// The API client to use for the repository
-  final ThunderApiClient _api;
+  final ResolvedApiClient _api;
 
   /// The localization service to use for user-facing errors
   final LocalizationService _localization;
@@ -103,12 +102,13 @@ class PostRepositoryImpl implements PostRepository {
     required this.account,
     ThunderApiClient? api,
     LocalizationService localization = const ThunderLocalizationService(),
-  })  : _api = api ?? ApiClientFactory.create(account, debug: kDebugMode),
+  })  : _api = ResolvedApiClient(account: account, api: api),
         _localization = localization;
 
   @override
   Future<PostDetail?> getPost(int postId, {int? commentId}) async {
-    final response = await _api.getPost(postId, commentId: commentId);
+    final api = await _api.get();
+    final response = await api.getPost(postId, commentId: commentId);
 
     final parsedPost = await parsePostWithCurrentPreferences(response.post);
     final parsedCrossPosts = await Future.wait(response.crossPosts.map(parsePostWithCurrentPreferences));
@@ -137,7 +137,8 @@ class PostRepositoryImpl implements PostRepository {
     int? topicId,
     bool? ignoreSticky,
   }) async {
-    final response = await _api.getPosts(
+    final api = await _api.get();
+    final response = await api.getPosts(
       cursor: cursor,
       limit: limit,
       feedListType: feedListType,
@@ -176,7 +177,8 @@ class PostRepositoryImpl implements PostRepository {
     final l10n = _localization.l10n;
     if (account.anonymous) throw NotLoggedInException(l10n.userNotLoggedIn);
 
-    final response = await _api.createPostWithMetadata(
+    final api = await _api.get();
+    final response = await api.createPostWithMetadata(
       communityId: communityId,
       title: name,
       contents: body,
@@ -209,7 +211,8 @@ class PostRepositoryImpl implements PostRepository {
     final l10n = _localization.l10n;
     if (account.anonymous) throw NotLoggedInException(l10n.userNotLoggedIn);
 
-    final response = await _api.editPostWithMetadata(
+    final api = await _api.get();
+    final response = await api.editPostWithMetadata(
       postId: postId,
       title: name,
       contents: body,
@@ -231,7 +234,8 @@ class PostRepositoryImpl implements PostRepository {
     final l10n = _localization.l10n;
     if (account.anonymous) throw NotLoggedInException(l10n.userNotLoggedIn);
 
-    final response = await _api.votePost(postId: post.id, score: score);
+    final api = await _api.get();
+    final response = await api.votePost(postId: post.id, score: score);
     return response.copyWith(media: post.media);
   }
 
@@ -240,7 +244,8 @@ class PostRepositoryImpl implements PostRepository {
     final l10n = _localization.l10n;
     if (account.anonymous) throw NotLoggedInException(l10n.userNotLoggedIn);
 
-    final response = await _api.savePost(postId: post.id, save: save);
+    final api = await _api.get();
+    final response = await api.savePost(postId: post.id, save: save);
     return response.copyWith(media: post.media);
   }
 
@@ -249,7 +254,8 @@ class PostRepositoryImpl implements PostRepository {
     final l10n = _localization.l10n;
     if (account.anonymous) throw NotLoggedInException(l10n.userNotLoggedIn);
 
-    return _api.readPost(postIds: [postId], read: read);
+    final api = await _api.get();
+    return api.readPost(postIds: [postId], read: read);
   }
 
   @override
@@ -257,7 +263,8 @@ class PostRepositoryImpl implements PostRepository {
     final l10n = _localization.l10n;
     if (account.anonymous) throw NotLoggedInException(l10n.userNotLoggedIn);
 
-    final success = await _api.readPost(postIds: postIds, read: read);
+    final api = await _api.get();
+    final success = await api.readPost(postIds: postIds, read: read);
     return success ? [] : List<int>.generate(postIds.length, (index) => index);
   }
 
@@ -266,11 +273,8 @@ class PostRepositoryImpl implements PostRepository {
     final l10n = _localization.l10n;
     if (account.anonymous) throw NotLoggedInException(l10n.userNotLoggedIn);
 
-    if (!_api.supportsHidePosts) {
-      throw UnsupportedFeatureException('Hiding posts', platformName: _api.platformName);
-    }
-
-    return _api.hidePost(postId: postId, hide: hide);
+    final api = await _api.get();
+    return api.hidePost(postId: postId, hide: hide);
   }
 
   @override
@@ -278,7 +282,8 @@ class PostRepositoryImpl implements PostRepository {
     final l10n = _localization.l10n;
     if (account.anonymous) throw NotLoggedInException(l10n.userNotLoggedIn);
 
-    return _api.deletePost(postId: postId, deleted: delete);
+    final api = await _api.get();
+    return api.deletePost(postId: postId, deleted: delete);
   }
 
   @override
@@ -286,7 +291,8 @@ class PostRepositoryImpl implements PostRepository {
     final l10n = _localization.l10n;
     if (account.anonymous) throw NotLoggedInException(l10n.userNotLoggedIn);
 
-    return _api.lockPost(postId: postId, locked: lock);
+    final api = await _api.get();
+    return api.lockPost(postId: postId, locked: lock);
   }
 
   @override
@@ -294,7 +300,8 @@ class PostRepositoryImpl implements PostRepository {
     final l10n = _localization.l10n;
     if (account.anonymous) throw NotLoggedInException(l10n.userNotLoggedIn);
 
-    return _api.pinPost(postId: postId, pinned: pin);
+    final api = await _api.get();
+    return api.pinPost(postId: postId, pinned: pin);
   }
 
   @override
@@ -302,7 +309,8 @@ class PostRepositoryImpl implements PostRepository {
     final l10n = _localization.l10n;
     if (account.anonymous) throw NotLoggedInException(l10n.userNotLoggedIn);
 
-    return _api.removePost(postId: postId, removed: remove, reason: reason);
+    final api = await _api.get();
+    return api.removePost(postId: postId, removed: remove, reason: reason);
   }
 
   @override
@@ -310,6 +318,7 @@ class PostRepositoryImpl implements PostRepository {
     final l10n = _localization.l10n;
     if (account.anonymous) throw NotLoggedInException(l10n.userNotLoggedIn);
 
-    await _api.reportPost(postId: postId, reason: reason);
+    final api = await _api.get();
+    await api.reportPost(postId: postId, reason: reason);
   }
 }

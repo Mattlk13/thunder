@@ -116,7 +116,8 @@ abstract class ThunderApiClient {
 
   /// Fetch a list of posts.
   ///
-  /// Pass [cursor] from the previous response's `nextPage`, when loading more.
+  /// Pass [cursor] from the previous response's `nextPage` when loading more.
+  /// Treat [cursor] as opaque — do not parse or modify it.
   Future<GetPostsResponse> getPosts({
     String? cursor,
     int? limit,
@@ -163,6 +164,8 @@ abstract class ThunderApiClient {
   });
 
   /// Create a new post with any extra tags or flair the platform supports.
+  ///
+  /// Tags and flair IDs are fully supported on PieFed. Lemmy clients ignore them and delegate to [createPost].
   Future<ThunderPost> createPostWithMetadata({
     required String title,
     required int communityId,
@@ -505,32 +508,14 @@ abstract class ThunderApiClient {
   // Feature Flags
   // =============================================================
 
-  /// Whether the platform supports hiding posts.
-  bool get supportsHidePosts => true;
-
-  /// Whether the platform supports post reports.
-  bool get supportsPostReports => true;
-
-  /// Whether the platform supports comment reports.
-  bool get supportsCommentReports => true;
-
-  /// Whether the platform supports private messages.
-  bool get supportsPrivateMessages => true;
-
-  /// Whether the platform supports modlog.
-  bool get supportsModlog => true;
+  /// Whether the platform supports listing and resolving moderator reports.
+  bool get supportsListReports => true;
 
   /// Whether the platform supports settings import/export.
   bool get supportsSettingsImportExport => true;
 
-  /// Whether the platform supports media management.
-  bool get supportsMedia => true;
-
   /// Whether the platform supports TOTP for login.
   bool get supportsTOTP => true;
-
-  /// Whether the platform supports instance blocking.
-  bool get supportsInstanceBlock => true;
 
   // =============================================================
   // Lifecycle

@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
 import 'package:thunder/src/features/account/data/repositories/account_repository.dart';
+import 'package:thunder/src/features/account/domain/models/account_media.dart';
 import 'package:thunder/src/foundation/foundation.dart';
 
 import '../../../../../helpers/mock_thunder_api_client.dart';
@@ -78,21 +79,6 @@ void main() {
       expect(emptyResult, isEmpty);
     });
 
-    test('media throws UnsupportedFeatureException when media unsupported', () async {
-      when(() => api.supportsMedia).thenReturn(false);
-
-      final repository = AccountRepositoryImpl(
-        account: loggedInAccount(),
-        api: api,
-        localization: testLocalization,
-      );
-
-      expect(
-        () => repository.media(),
-        throwsA(isA<UnsupportedFeatureException>()),
-      );
-    });
-
     test('importSettings throws UnsupportedFeatureException when import unsupported', () async {
       when(() => api.supportsSettingsImportExport).thenReturn(false);
 
@@ -121,8 +107,9 @@ void main() {
       );
     });
 
-    test('deleteImage throws UnsupportedFeatureException when media unsupported', () async {
-      when(() => api.supportsMedia).thenReturn(false);
+    test('media delegates to api without feature flag guard', () async {
+      const page = ThunderPage<AccountMediaItem>(items: []);
+      when(() => api.media(page: 1, limit: 10)).thenAnswer((_) async => page);
 
       final repository = AccountRepositoryImpl(
         account: loggedInAccount(),
@@ -130,10 +117,36 @@ void main() {
         localization: testLocalization,
       );
 
-      expect(
-        () => repository.deleteImage(file: 'image.png'),
-        throwsA(isA<UnsupportedFeatureException>()),
+      final result = await repository.media(page: 1, limit: 10);
+
+      expect(result, page);
+      verify(() => api.media(page: 1, limit: 10)).called(1);
+    });
+
+    test('exportSettings returns api payload when supported', () async {
+      when(() => api.exportSettings()).thenAnswer((_) async => {'settings': '{}'});
+
+      final repository = AccountRepositoryImpl(
+        account: loggedInAccount(),
+        api: api,
+        localization: testLocalization,
       );
+
+      expect(await repository.exportSettings(), {'settings': '{}'});
+    });
+
+    test('deleteImage delegates to api', () async {
+      when(() => api.deleteImage(file: 'abc.png', token: 'token')).thenAnswer((_) async {});
+
+      final repository = AccountRepositoryImpl(
+        account: loggedInAccount(),
+        api: api,
+        localization: testLocalization,
+      );
+
+      await repository.deleteImage(file: 'abc.png', token: 'token');
+
+      verify(() => api.deleteImage(file: 'abc.png', token: 'token')).called(1);
     });
   });
 }
