@@ -1928,7 +1928,22 @@ class AppLocalizationsRu extends AppLocalizations {
   String get postTitle => 'Название';
 
   @override
+  String get postTitleBold => 'Bold post titles';
+
+  @override
   String get postTitleFontScale => 'Post Title Font Scale';
+
+  @override
+  String get postTitleFontWeight => 'Post Title Weight';
+
+  @override
+  String get postTitleFontWeightBold => 'Bold';
+
+  @override
+  String get postTitleFontWeightExtraBold => 'Extra bold';
+
+  @override
+  String get postTitleFontWeightNormal => 'Normal';
 
   @override
   String get postTogglePreview => 'Переключить просмотр';
