@@ -32,9 +32,9 @@ final RegExp _lemmyShortUserUrl = RegExp(r'^@?(https?:\/\/)?(.*)/u/([^@\n]*)$');
 /// Groups: 2=username, 3=instance
 final RegExp _lemmyUserMention = RegExp(r'^@?(https?:\/\/)?((?:(?!\/u\/u).)*)@(.*)$');
 
-/// Matches instance.tld/post/123
+/// Matches instance.tld/post/123?foo=bar
 /// Groups: 2=instance, 3=postId
-final RegExp _lemmyPostUrl = RegExp(r'^(https?:\/\/)(.*)/post/([0-9]+)$');
+final RegExp _lemmyPostUrl = RegExp(r'^(https?:\/\/)(.*)/post/([0-9]+)(?:\?.*)?$');
 
 /// Matches instance.tld/comment/123
 /// Groups: 2=instance, 3=commentId
