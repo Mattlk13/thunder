@@ -1,22 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-import 'package:extended_image/extended_image.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:thunder/l10n/generated/app_localizations.dart';
-import 'package:thunder/src/app/wiring/state_factories.dart';
-import 'package:thunder/src/features/account/account.dart';
+import 'package:thunder/src/core/app/dependency_factories.dart';
 import 'package:thunder/src/features/comment/comment.dart';
-import 'package:thunder/src/foundation/primitives/primitives.dart';
+import 'package:thunder/src/core/domain/domain.dart';
 import 'package:thunder/src/features/feed/feed.dart';
 
 import 'package:thunder/src/shared/name/full_name_widgets.dart';
-import 'package:thunder/src/app/state/thunder/thunder_bloc.dart';
 import 'package:thunder/src/features/feed/api.dart';
 import 'package:thunder/src/features/settings/api.dart';
 import 'package:thunder/src/features/user/user.dart';
-import 'package:thunder/src/foundation/config/config.dart';
+import 'package:thunder/src/core/config/config.dart';
 import 'package:thunder/src/shared/media/media_utils.dart';
 import 'package:thunder/packages/ui/ui.dart';
 
@@ -32,7 +30,6 @@ class MediaManagementPage extends StatelessWidget {
 
     final dateFormat = context.select<FeedPreferencesCubit, DateFormat?>((cubit) => cubit.state.dateFormat);
     final metadataFontSizeScale = context.select<ThemePreferencesCubit, FontScale>((cubit) => cubit.state.metadataFontSizeScale);
-    final imageCachingMode = context.select<ThunderCubit, ImageCachingMode>((cubit) => cubit.state.imageCachingMode);
 
     return BlocConsumer<UserMediaCubit, UserMediaState>(
       listener: (context, state) {
@@ -95,42 +92,35 @@ class MediaManagementPage extends StatelessWidget {
                                     duration: const Duration(milliseconds: 250),
                                     child: Stack(
                                       children: [
-                                        ExtendedImage.network(
-                                          image.url,
-                                          cache: true,
-                                          clearMemoryCacheWhenDispose: imageCachingMode == ImageCachingMode.relaxed,
-                                          loadStateChanged: (state) {
-                                            if (state.extendedImageLoadState == LoadState.loading) {
-                                              return SizedBox(
-                                                width: double.infinity,
-                                                child: Align(
-                                                  alignment: Alignment.center,
-                                                  child: Padding(
-                                                    padding: const EdgeInsets.all(16.0),
-                                                    child: Text(l10n.loading),
+                                        CachedNetworkImage(
+                                          imageUrl: image.url,
+                                          fadeInDuration: const Duration(milliseconds: 100),
+                                          fadeOutDuration: Duration.zero,
+                                          placeholder: (context, url) => SizedBox(
+                                            width: double.infinity,
+                                            child: Align(
+                                              alignment: Alignment.center,
+                                              child: Padding(
+                                                padding: const EdgeInsets.all(16.0),
+                                                child: Text(l10n.loading),
+                                              ),
+                                            ),
+                                          ),
+                                          errorWidget: (context, url, error) => SizedBox(
+                                            width: double.infinity,
+                                            child: Align(
+                                              alignment: Alignment.center,
+                                              child: Padding(
+                                                padding: const EdgeInsets.all(16.0),
+                                                child: Text(
+                                                  l10n.unableToLoadImageFrom(account.instance),
+                                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                                    color: theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.5),
                                                   ),
                                                 ),
-                                              );
-                                            }
-                                            if (state.extendedImageLoadState == LoadState.failed) {
-                                              return SizedBox(
-                                                width: double.infinity,
-                                                child: Align(
-                                                  alignment: Alignment.center,
-                                                  child: Padding(
-                                                    padding: const EdgeInsets.all(16.0),
-                                                    child: Text(
-                                                      l10n.unableToLoadImageFrom(account.instance),
-                                                      style: theme.textTheme.bodyMedium?.copyWith(
-                                                        color: theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.5),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                              );
-                                            }
-                                            return null;
-                                          },
+                                              ),
+                                            ),
+                                          ),
                                         ),
                                         Positioned.fill(
                                           child: Material(
