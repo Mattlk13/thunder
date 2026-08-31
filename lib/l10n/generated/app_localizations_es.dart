@@ -1,5 +1,6 @@
 // ignore: unused_import
 import 'package:intl/intl.dart' as intl;
+
 import 'app_localizations.dart';
 
 // ignore_for_file: type=lint
@@ -1024,7 +1025,8 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String failedToCommunicateWithThunderNotificationServer(
-      Object serverAddress) {
+    Object serverAddress,
+  ) {
     return 'Error al comunicarse con el servidor de notificación de Thunder en \'$serverAddress\'';
   }
 

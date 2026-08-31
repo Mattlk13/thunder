@@ -1,5 +1,6 @@
 // ignore: unused_import
 import 'package:intl/intl.dart' as intl;
+
 import 'app_localizations.dart';
 
 // ignore_for_file: type=lint
@@ -1002,7 +1003,8 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String failedToCommunicateWithThunderNotificationServer(
-      Object serverAddress) {
+    Object serverAddress,
+  ) {
     return 'Failed to communicate with Thunder notification server at $serverAddress.';
   }
 
@@ -4233,7 +4235,8 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
 
   @override
   String failedToCommunicateWithThunderNotificationServer(
-      Object serverAddress) {
+    Object serverAddress,
+  ) {
     return '无法与位于 $serverAddress 的 Thunder 通知服务器通信。';
   }
 
