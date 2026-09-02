@@ -165,6 +165,9 @@ jobs:
       - name: Install Flutter dependencies
         run: flutter pub get
 
+      - name: Precache iOS Flutter engine
+        run: flutter precache --ios
+
       - name: Install iOS pods
         working-directory: ios
         run: pod install
